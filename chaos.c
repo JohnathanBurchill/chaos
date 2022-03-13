@@ -234,6 +234,8 @@ int main (int argc, char **argv)
 	double x = 0;
 	double magneticPotential = 0.0;
 	double magneticPotentialN = 0.0;
+	double brN = 0.0;
+	double br = 0.0;
 
 	double aoverr = 1.0;
 
@@ -243,7 +245,6 @@ int main (int argc, char **argv)
 		printf("Calculation interrupted.\n");
 	for (size_t t = 0; t < nInputs && keep_running == 1; t+=25)
 	{
-		// Interpolate coefficients to magnetic time.
 		time = ((double*)magVariables[0])[t];
 	 	theta = (90.0 - ((double*)magVariables[1])[t]) * degrees;
 		phi = ((double*)magVariables[2])[t] * degrees;
@@ -274,7 +275,7 @@ int main (int argc, char **argv)
 				gRead++;
 				hRead++;
 			}
-			magneticPotential = magneticPotentialN * aoverrpowers[n-1] * a;
+			magneticPotential += magneticPotentialN * aoverrpowers[n-1] * a;
 		}
 		printf("magneticPotential(time=%lf, r=%lf, colatitude=%lf, longitude=%lf) = %lf\n", time, r, theta/degrees, phi/degrees, magneticPotential);
 	}
