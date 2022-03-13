@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_sf_legendre.h>
@@ -10,7 +11,10 @@
 
 #define NMAGVARS 5
 
+// declare functions
 void usage(const char *name);
+int yearFraction(long year, long month, long day, double* fractionalYear);
+
 
 char infoHeader[50];
 
@@ -33,6 +37,8 @@ int main (int argc, char **argv)
 	double *times = NULL;
 	double *gnm = NULL;
 	double *hnm = NULL;
+	double *gnmNow = NULL;
+	double *hnmNow = NULL;
 
 	size_t nInputs = 0;
 	uint8_t *magVariables[NMAGVARS];
@@ -89,10 +95,12 @@ int main (int argc, char **argv)
 	polynomials = malloc(nTerms * sizeof(double));
 	aoverrpowers = malloc(maxN * sizeof(double));
 	times = (double*)malloc(nTimes * sizeof(double));
-	// Uses more memory than needed. Could be revised
+	// Uses more memory than needed for hnm. Could be revised
 	gnm = (double*)malloc(maxN * (maxN + 2) * nTimes * sizeof(double));
 	hnm = (double*)malloc(maxN * (maxN + 2) * nTimes * sizeof(double));
-	if (polynomials == NULL || aoverrpowers == NULL || times == NULL || gnm == NULL || hnm == NULL)
+	gnmNow = (double*)malloc(maxN * (maxN + 2) * sizeof(double));
+	hnmNow = (double*)malloc(maxN * (maxN + 2) * sizeof(double));
+	if (polynomials == NULL || aoverrpowers == NULL || times == NULL || gnm == NULL || hnm == NULL || gnmNow == NULL || hnmNow == NULL)
 	{
 		printf("Cannot remember anything. Check my memory.\n");
 		goto cleanup;
@@ -147,6 +155,46 @@ int main (int argc, char **argv)
 	fclose(f);
 	f = NULL;
 
+	// Interpolate core model coefficients to the current day. 
+	// A resolution of 1 day will be sufficient for CHAOS core model calculations
+	// Given that inputs are from daily MAG_HR CDF files, we only need
+	// to interpolate once.
+	double fractionalYear = 0.0;
+	status = yearFraction(year, month, day, &fractionalYear);
+	if (status != 0)
+	{
+		printf("Could not calculate fractional year.\n");
+		goto cleanup;
+	}
+	size_t coefficientTimeIndex = nTimes - 1;
+	size_t coefficientTimeIndexPlus1 = 0;
+	double timeFraction = 0.0;
+	double deltaTime = 0.0;
+	while (times[coefficientTimeIndex] > fractionalYear && coefficientTimeIndex > 0)
+	{
+		coefficientTimeIndex--;
+	};
+	// Linear interpolation is sufficient given the number of model times is 5x the knot points.
+	// Constant extrapolation, should be revised to linearly extrapolate using dedicated model coefficients.
+	if ((coefficientTimeIndex == (nTimes - 1)) || (times[coefficientTimeIndex] > fractionalYear))
+	{
+		coefficientTimeIndexPlus1 = coefficientTimeIndex;
+		deltaTime = 1.0; // arbitrary, as we divide this into 0.0
+	}
+	else
+	{
+		coefficientTimeIndexPlus1 = coefficientTimeIndexPlus1 + 1;
+		deltaTime = times[coefficientTimeIndexPlus1] - times[coefficientTimeIndex];
+	}
+	timeFraction = (fractionalYear - times[coefficientTimeIndex]) / deltaTime;
+	for (int i = 0; i < maxN * (maxN + 2); i++)
+	{
+		gnmNow[i] = gnm[i*nTimes + coefficientTimeIndex] + timeFraction * (gnm[i*nTimes + coefficientTimeIndexPlus1] - gnm[i*nTimes + coefficientTimeIndex]);
+		// Calculates some irrelevant values at the end...
+		hnmNow[i] = hnm[i*nTimes + coefficientTimeIndex] + timeFraction * (hnm[i*nTimes + coefficientTimeIndexPlus1] - hnm[i*nTimes + coefficientTimeIndex]);
+	}
+
+
 	char *magVariableNames[NMAGVARS] = {
 		"Timestamp",
 		"Latitude",
@@ -158,9 +206,10 @@ int main (int argc, char **argv)
 
 	if (getInputFilename(satellite, year, month, day, magDir, "HR_1B", magFilename))
     {
-        fprintf(stdout, "%sMAG LR_1B input file is not available. Exiting.\n", infoHeader);
+        fprintf(stdout, "%sMAG HR_1B input file is not available. Exiting.\n", infoHeader);
         exit(1);
     }
+
 	loadCdf(magFilename, magVariableNames, NMAGVARS, magVariables, &nInputs);
 	if (nInputs == 0)
 	{
@@ -200,11 +249,11 @@ int main (int argc, char **argv)
 		hRead = 0;
 		for (int n = 1; n <= maxN; n++)
 		{
-			magneticPotentialN = gnm[gRead*nTimes] * polynomials[gsl_sf_legendre_array_index(n, 0)];
+			magneticPotentialN = gnmNow[gRead] * polynomials[gsl_sf_legendre_array_index(n, 0)];
 			gRead++;
 			for (int m = 1; m <= n; m++)
 			{
-				magneticPotentialN += (gnm[gRead*nTimes + 0] * cos(phi) + hnm[hRead*nTimes + 0] * sin(phi) ) * polynomials[gsl_sf_legendre_array_index(n, m)];
+				magneticPotentialN += (gnmNow[gRead] * cos(phi) + hnmNow[hRead] * sin(phi) ) * polynomials[gsl_sf_legendre_array_index(n, m)];
 				gRead++;
 				hRead++;
 			}
@@ -219,6 +268,8 @@ cleanup:
 	if (times != NULL) free(times);
 	if (gnm != NULL) free(gnm);
 	if (hnm != NULL) free(hnm);
+	if (gnmNow != NULL) free(gnmNow);
+	if (hnmNow != NULL) free(hnmNow);
 	for (int i = 0; i < NMAGVARS; i++)
 	{
 		if (magVariables[i] != NULL) free(magVariables[i]);
@@ -236,4 +287,28 @@ void usage(const char* name)
 	printf(" chaosModelCoefficientsDir: directory containing SHC files\n");
 	printf(" magCdfDir: directory containing MAG_HR CDFs\n");
 	printf(" outputDir: directory to store magnetic field vectors\n");
+}
+
+// Calculates day of year: 1 January is day 1.
+int yearFraction(long year, long month, long day, double* fractionalYear)
+{
+    time_t date;
+    struct tm dateStruct;
+    dateStruct.tm_year = year - 1900;
+    dateStruct.tm_mon = month - 1;
+    dateStruct.tm_mday = day;
+    dateStruct.tm_hour = 0;
+    dateStruct.tm_min = 0;
+    dateStruct.tm_sec = 0;
+    dateStruct.tm_yday = 0;
+    date = timegm(&dateStruct);
+    struct tm *dateStructUpdated = gmtime(&date);
+    if (dateStructUpdated == NULL)
+    {
+        fprintf(stdout, "%sUnable to get day of year from specified date.\n", infoHeader);
+        *fractionalYear = 0;
+        return -1;
+    }
+    *fractionalYear = (double) year + (double)(dateStructUpdated->tm_yday + 1)/365.25;
+    return 0;
 }
