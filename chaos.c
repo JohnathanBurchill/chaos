@@ -245,6 +245,11 @@ int main (int argc, char **argv)
 	double magneticPotentialForThetaN = 0.0;
 	double magneticPotentialForPhiN = 0.0;
 
+	// Measured fields
+	double bn = 0.0;
+	double be = 0.0;
+	double bc = 0.0;
+
 	double aoverr = 1.0;
 
 	if (keep_running == 1)
@@ -252,8 +257,8 @@ int main (int argc, char **argv)
 	else
 		printf("Calculation interrupted.\n");
 	
-	// for (size_t t = 0; t < nInputs && keep_running == 1; t++)
-	for (size_t t = 0; t < nInputs && keep_running == 1; t+=1*60*5)
+	for (size_t t = 0; t < nInputs && keep_running == 1; t++)
+	// for (size_t t = 0; t < nInputs && keep_running == 1; t+=1*60*5)
 	// for (size_t t = 0; t < nInputs && keep_running == 1; t+=50*60*5)
 	{
 		time = ((double*)magVariables[0])[t];
@@ -310,7 +315,14 @@ int main (int argc, char **argv)
 		// With magnetic potential
 		// printf("magneticPotential(time=%.1lf, r=%6.1lf, colatitude=%5.1lf, longitude=%5.1lf) = %.1lf, br = %.1lf, btheta = %.1lf nT\n", time, r, theta/degrees, phi/degrees, magneticPotential, br, btheta);
 		// Field vectors only
-		printf("time=%.1lf, r=%6.1lf, latitude=%5.1lf, longitude=%6.1lf: (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, r, 90.0 - theta/degrees, phi/degrees, -btheta, bphi, -br);
+//		printf("time=%.1lf, r=%6.1lf, latitude=%5.1lf, longitude=%6.1lf: (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, r, 90.0 - theta/degrees, phi/degrees, -btheta, bphi, -br);
+		// Compare model with measured fields
+		bn = ((double*)magVariables[4])[t*3 + 0];
+		be = ((double*)magVariables[4])[t*3 + 1];
+		bc = ((double*)magVariables[4])[t*3 + 2];
+		// printf("time=%.1lf: model/measured=(%8.1lf/%8.1lf, %8.1lf/%8.1lf, %8.1lf/%8.1lf) nT (NEC)\n", time, -btheta, bn, bphi, be, -br, bc);
+		// Delta-B (core removed)
+		printf("time=%.1lf: DeltaB = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, bn - (-btheta), be - bphi, bc - (-br));
 
 	}
 
