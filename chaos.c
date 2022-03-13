@@ -25,6 +25,7 @@ static void sig_handler(int ignored)
 
 void usage(const char *name);
 int yearFraction(long year, long month, long day, double* fractionalYear);
+int calculateCoreField(double r, double theta, double phi, int maxN, double *gnm, double *hnm, double *polynomials, double *derivatives, double *aoverrpowers, double *bn, double *be, double *bc);
 
 
 char infoHeader[50];
@@ -236,19 +237,15 @@ int main (int argc, char **argv)
 		goto cleanup;
 	}
 
-	double x = 0;
-	double magneticPotential = 0.0;
-	double magneticPotentialN = 0.0;
-	double br = 0.0;
-	double btheta = 0.0;
-	double bphi = 0.0;
-	double magneticPotentialForThetaN = 0.0;
-	double magneticPotentialForPhiN = 0.0;
-
 	// Measured fields
 	double bn = 0.0;
 	double be = 0.0;
 	double bc = 0.0;
+
+	// Core field
+	double bcn = 0.0;
+	double bce = 0.0;
+	double bcc = 0.0;
 
 	double aoverr = 1.0;
 
@@ -265,52 +262,14 @@ int main (int argc, char **argv)
 	 	theta = (90.0 - ((double*)magVariables[1])[t]) * degrees;
 		phi = ((double*)magVariables[2])[t] * degrees;
 		r = ((double*)magVariables[3])[t]/1000.;
-		status = gsl_sf_legendre_deriv_array(GSL_SF_LEGENDRE_SCHMIDT, maxN, cos(theta), polynomials, derivatives);
-		if (status)
+
+		status = calculateCoreField(r, theta, phi, maxN, gnmNow, hnmNow, polynomials, derivatives, aoverrpowers, &bcn, &bce, &bcc);
+		if (status != 0)
 		{
-			printf("status: %s\n", gsl_strerror(status));
+			printf("Could not calculate core field\n");
 			goto cleanup;
 		}
-		aoverr = a / r;
-		aoverrpowers[0] = aoverr * aoverr; // (a/r)^n+1, n starting at 1
-		for (int i = 2; i <= maxN; i++)
-		{
-			aoverrpowers[i-1] = aoverrpowers[i-2] * aoverr;
-		}
 
-		magneticPotential = 0.0;
-		br = 0.0;
-		btheta = 0.0;
-		bphi = 0.0;
-		gRead = 0;
-		hRead = 0;
-		for (int n = 1; n <= maxN; n++)
-		{
-			magneticPotentialN = gnmNow[gRead] * polynomials[gsl_sf_legendre_array_index(n, 0)];
-			magneticPotentialForThetaN = gnmNow[gRead] * derivatives[gsl_sf_legendre_array_index(n, 0)] * (-sin(theta));
-			magneticPotentialForPhiN = 0.0;
-			gRead++;
-			for (int m = 1; m <= n; m++)
-			{
-				magneticPotentialN += (gnmNow[gRead] * cos((double)m*phi) + hnmNow[hRead] * sin((double)m*phi) ) * polynomials[gsl_sf_legendre_array_index(n, m)];
-				magneticPotentialForThetaN += (gnmNow[gRead] * cos((double)m*phi) + hnmNow[hRead] * sin((double)m*phi) ) * derivatives[gsl_sf_legendre_array_index(n, m)] * (-sin(theta));
-				magneticPotentialForPhiN += (gnmNow[gRead] * (-m*sin((double)m*phi)) + hnmNow[hRead] * m*cos((double)m*phi) ) * polynomials[gsl_sf_legendre_array_index(n, m)];
-
-				gRead++;
-				hRead++;
-			}
-			magneticPotentialN *= aoverrpowers[n-1] * a;
-			magneticPotentialForThetaN *= aoverrpowers[n-1] * a;
-			magneticPotentialForPhiN *= aoverrpowers[n-1] * a;
-
-			magneticPotential += magneticPotentialN;
-			// Br = -di potential by di r
-			br += -magneticPotentialN * (-(n+1.) / r);
-			// Btheta = -di potential by di theta / r
-			btheta += -magneticPotentialForThetaN / r;
-			// Bphi = -di potential by di phi / (r*sin(theta))
-			bphi += -magneticPotentialForPhiN / (r * sin(theta));
-		}
 		// printf("t=%ld\n", t);
 		// With magnetic potential
 		// printf("magneticPotential(time=%.1lf, r=%6.1lf, colatitude=%5.1lf, longitude=%5.1lf) = %.1lf, br = %.1lf, btheta = %.1lf nT\n", time, r, theta/degrees, phi/degrees, magneticPotential, br, btheta);
@@ -322,7 +281,7 @@ int main (int argc, char **argv)
 		bc = ((double*)magVariables[4])[t*3 + 2];
 		// printf("time=%.1lf: model/measured=(%8.1lf/%8.1lf, %8.1lf/%8.1lf, %8.1lf/%8.1lf) nT (NEC)\n", time, -btheta, bn, bphi, be, -br, bc);
 		// Delta-B (core removed)
-		printf("time=%.1lf: DeltaB = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, bn - (-btheta), be - bphi, bc - (-br));
+		printf("time=%.1lf: DeltaB = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, bn - bcn, be - bce, bc - bcc);
 
 	}
 
@@ -376,4 +335,67 @@ int yearFraction(long year, long month, long day, double* fractionalYear)
     }
     *fractionalYear = (double) year + (double)(dateStructUpdated->tm_yday + 1)/365.25;
     return 0;
+}
+
+int calculateCoreField(double r, double theta, double phi, int maxN, double *gnm, double *hnm, double *polynomials, double *derivatives, double *aoverrpowers, double *bn, double *be, double *bc)
+{
+	double a = 6371.2;
+	double aoverr = 1.0;
+	double magneticPotential = 0.0;
+	double magneticPotentialN = 0.0;
+	double magneticPotentialForThetaN = 0.0;
+	double magneticPotentialForPhiN = 0.0;
+	double br = 0.0;
+	double btheta = 0.0;
+	double bphi = 0.0;
+	size_t gRead = 0;
+	size_t hRead = 0;
+
+	int status = 0;
+	status = gsl_sf_legendre_deriv_array(GSL_SF_LEGENDRE_SCHMIDT, maxN, cos(theta), polynomials, derivatives);
+	if (status)
+	{
+		printf("status: %s\n", gsl_strerror(status));
+		return -1;
+	}
+	aoverr = a / r;
+	aoverrpowers[0] = aoverr * aoverr; // (a/r)^n+1, n starting at 1
+	for (int i = 2; i <= maxN; i++)
+	{
+		aoverrpowers[i-1] = aoverrpowers[i-2] * aoverr;
+	}
+
+	for (int n = 1; n <= maxN; n++)
+	{
+		magneticPotentialN = gnm[gRead] * polynomials[gsl_sf_legendre_array_index(n, 0)];
+		magneticPotentialForThetaN = gnm[gRead] * derivatives[gsl_sf_legendre_array_index(n, 0)] * (-sin(theta));
+		magneticPotentialForPhiN = 0.0;
+		gRead++;
+		for (int m = 1; m <= n; m++)
+		{
+			magneticPotentialN += (gnm[gRead] * cos((double)m*phi) + hnm[hRead] * sin((double)m*phi) ) * polynomials[gsl_sf_legendre_array_index(n, m)];
+			magneticPotentialForThetaN += (gnm[gRead] * cos((double)m*phi) + hnm[hRead] * sin((double)m*phi) ) * derivatives[gsl_sf_legendre_array_index(n, m)] * (-sin(theta));
+			magneticPotentialForPhiN += (gnm[gRead] * (-m*sin((double)m*phi)) + hnm[hRead] * m*cos((double)m*phi) ) * polynomials[gsl_sf_legendre_array_index(n, m)];
+			gRead++;
+			hRead++;
+		}
+		magneticPotentialN *= aoverrpowers[n-1] * a;
+		magneticPotentialForThetaN *= aoverrpowers[n-1] * a;
+		magneticPotentialForPhiN *= aoverrpowers[n-1] * a;
+
+		magneticPotential += magneticPotentialN;
+		// Br = -di potential by di r
+		br += -magneticPotentialN * (-(n+1.) / r);
+		// Btheta = -di potential by di theta / r
+		btheta += -magneticPotentialForThetaN / r;
+		// Bphi = -di potential by di phi / (r*sin(theta))
+		bphi += -magneticPotentialForPhiN / (r * sin(theta));
+	}
+
+	*bn = -btheta;
+	*be = bphi;
+	*bc = -br;
+
+	return 0;
+
 }
