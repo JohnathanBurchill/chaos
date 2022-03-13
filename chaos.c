@@ -14,11 +14,12 @@ int main ()
 
 	printf("Hi\n");
 
+	double degrees = M_PI / 180.0;
 	double a = 6371.2;
 	double alt = 500.0;
 	double r = a + alt;
-	double theta = 0.0;
-	double phi = 0.;
+	double theta = 67.0 * degrees;
+	double phi = 31. * degrees;
 
 	double *polynomials = NULL;
 	double *aoverrpowers = NULL;
@@ -143,8 +144,8 @@ int main ()
 		}
 		magneticPotential += magneticPotentialN;
 	}
-	for (int i = 1; i <= maxN; i++)
-		printf("aoverr[%d]: %lf\n", i, aoverrpowers[i-1]);
+	// for (int i = 1; i <= maxN; i++)
+	// 	printf("aoverr[%d]: %lf\n", i, aoverrpowers[i-1]);
 	printf("magneticPotential(r=%lf, theta=%lf, phi=%lf) = %lf\n", r, theta, phi, magneticPotential);
 
 cleanup:
