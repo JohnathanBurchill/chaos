@@ -25,7 +25,7 @@ static void sig_handler(int ignored)
 
 void usage(const char *name);
 int yearFraction(long year, long month, long day, double* fractionalYear);
-int calculateCoreField(double r, double theta, double phi, int maxN, double *gnm, double *hnm, double *polynomials, double *derivatives, double *aoverrpowers, double *bn, double *be, double *bc);
+int calculateField(double r, double theta, double phi, int maxN, double *gnm, double *hnm, double *polynomials, double *derivatives, double *aoverrpowers, double *bn, double *be, double *bc);
 
 
 char infoHeader[50];
@@ -263,7 +263,7 @@ int main (int argc, char **argv)
 		phi = ((double*)magVariables[2])[t] * degrees;
 		r = ((double*)magVariables[3])[t]/1000.;
 
-		status = calculateCoreField(r, theta, phi, maxN, gnmNow, hnmNow, polynomials, derivatives, aoverrpowers, &bcn, &bce, &bcc);
+		status = calculateField(r, theta, phi, maxN, gnmNow, hnmNow, polynomials, derivatives, aoverrpowers, &bcn, &bce, &bcc);
 		if (status != 0)
 		{
 			printf("Could not calculate core field\n");
@@ -333,11 +333,12 @@ int yearFraction(long year, long month, long day, double* fractionalYear)
         *fractionalYear = 0;
         return -1;
     }
+	// How does this work for leap years?
     *fractionalYear = (double) year + (double)(dateStructUpdated->tm_yday + 1)/365.25;
     return 0;
 }
 
-int calculateCoreField(double r, double theta, double phi, int maxN, double *gnm, double *hnm, double *polynomials, double *derivatives, double *aoverrpowers, double *bn, double *be, double *bc)
+int calculateField(double r, double theta, double phi, int maxN, double *gnm, double *hnm, double *polynomials, double *derivatives, double *aoverrpowers, double *bn, double *be, double *bc)
 {
 	double a = 6371.2;
 	double aoverr = 1.0;
