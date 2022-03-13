@@ -341,7 +341,7 @@ int yearFraction(long year, long month, long day, double* fractionalYear)
 int calculateField(double r, double theta, double phi, int maxN, double *gnm, double *hnm, double *polynomials, double *derivatives, double *aoverrpowers, double *bn, double *be, double *bc)
 {
 	double a = 6371.2;
-	double aoverr = 1.0;
+	double aoverr = a/r;
 	double magneticPotential = 0.0;
 	double magneticPotentialN = 0.0;
 	double magneticPotentialForThetaN = 0.0;
@@ -353,17 +353,18 @@ int calculateField(double r, double theta, double phi, int maxN, double *gnm, do
 	size_t hRead = 0;
 
 	int status = 0;
+
+	aoverrpowers[0] = aoverr * aoverr; // (a/r)^n+1, n starting at 1
+	for (int i = 2; i <= maxN; i++)
+	{
+		aoverrpowers[i-1] = aoverrpowers[i-2] * aoverr;
+	}
+
 	status = gsl_sf_legendre_deriv_array(GSL_SF_LEGENDRE_SCHMIDT, maxN, cos(theta), polynomials, derivatives);
 	if (status)
 	{
 		printf("status: %s\n", gsl_strerror(status));
 		return -1;
-	}
-	aoverr = a / r;
-	aoverrpowers[0] = aoverr * aoverr; // (a/r)^n+1, n starting at 1
-	for (int i = 2; i <= maxN; i++)
-	{
-		aoverrpowers[i-1] = aoverrpowers[i-2] * aoverr;
 	}
 
 	for (int n = 1; n <= maxN; n++)
