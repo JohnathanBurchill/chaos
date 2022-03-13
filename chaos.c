@@ -23,10 +23,10 @@ int main (int argc, char **argv)
 
 	double degrees = M_PI / 180.0;
 	double a = 6371.2;
-	double alt = 500.0;
-	double r = a + alt;
-	double theta = 67.0 * degrees;
-	double phi = 31. * degrees;
+	double time = 0.;
+	double r = 0.;
+	double theta = 0.0 * degrees;
+	double phi = 0.0 * degrees;
 
 	double *polynomials = NULL;
 	double *aoverrpowers = NULL;
@@ -85,11 +85,11 @@ int main (int argc, char **argv)
 
 	printf("MaxN: %d, nTimes: %d\n", maxN, nTimes);
 
-	size_t n = gsl_sf_legendre_array_n(maxN);
-	polynomials = malloc(n * sizeof(double));
+	size_t nTerms = gsl_sf_legendre_array_n(maxN);
+	polynomials = malloc(nTerms * sizeof(double));
 	aoverrpowers = malloc(maxN * sizeof(double));
 	times = (double*)malloc(nTimes * sizeof(double));
-	// More memory than needed. Could be revised
+	// Uses more memory than needed. Could be revised
 	gnm = (double*)malloc(maxN * (maxN + 2) * nTimes * sizeof(double));
 	hnm = (double*)malloc(maxN * (maxN + 2) * nTimes * sizeof(double));
 	if (polynomials == NULL || aoverrpowers == NULL || times == NULL || gnm == NULL || hnm == NULL)
@@ -149,8 +149,8 @@ int main (int argc, char **argv)
 
 	char *magVariableNames[NMAGVARS] = {
 		"Timestamp",
-		"Longitude",
 		"Latitude",
+		"Longitude",
 		"Radius",
 		"B_NEC"
 	};
@@ -172,10 +172,16 @@ int main (int argc, char **argv)
 	double magneticPotential = 0.0;
 	double magneticPotentialN = 0.0;
 
-	// 2 Hz simulated
 	double aoverr = 1.0;
-	for (double t = 0.; t < 86400.; t+=0.5)
+
+	printf("Calculating magnetic potential...\n");
+	for (size_t t = 0; t < nInputs; t+=25)
 	{
+		// Interpolate coefficients to magnetic time.
+		time = ((double*)magVariables[0])[t];
+	 	theta = (90.0 - ((double*)magVariables[1])[t]) * degrees;
+		phi = ((double*)magVariables[2])[t] * degrees;
+		r = ((double*)magVariables[3])[t]/1000.;
 		status = gsl_sf_legendre_array(GSL_SF_LEGENDRE_SCHMIDT, maxN, cos(theta), polynomials);
 		if (status)
 		{
@@ -192,23 +198,20 @@ int main (int argc, char **argv)
 		magneticPotential = 0.0;
 		gRead = 0;
 		hRead = 0;
-		for (int l = 1; l <= maxN; l++)
+		for (int n = 1; n <= maxN; n++)
 		{
-			magneticPotentialN = gnm[gRead*nTimes] * polynomials[gsl_sf_legendre_array_index(l, 0)];
+			magneticPotentialN = gnm[gRead*nTimes] * polynomials[gsl_sf_legendre_array_index(n, 0)];
 			gRead++;
-			for (int m = 1; m <= l; m++)
+			for (int m = 1; m <= n; m++)
 			{
-				magneticPotentialN += (gnm[gRead*nTimes + 0] * cos(phi) + hnm[hRead*nTimes + 0] * sin(phi) ) * polynomials[gsl_sf_legendre_array_index(l, m)];
+				magneticPotentialN += (gnm[gRead*nTimes + 0] * cos(phi) + hnm[hRead*nTimes + 0] * sin(phi) ) * polynomials[gsl_sf_legendre_array_index(n, m)];
 				gRead++;
 				hRead++;
 			}
-			magneticPotentialN *= aoverrpowers[l-1] * a;
+			magneticPotential = magneticPotentialN * aoverrpowers[n-1] * a;
 		}
-		magneticPotential += magneticPotentialN;
+		printf("magneticPotential(time=%lf, r=%lf, colatitude=%lf, longitude=%lf) = %lf\n", time, r, theta/degrees, phi/degrees, magneticPotential);
 	}
-	// for (int i = 1; i <= maxN; i++)
-	// 	printf("aoverr[%d]: %lf\n", i, aoverrpowers[i-1]);
-	printf("magneticPotential(r=%lf, theta=%lf, phi=%lf) = %lf\n", r, theta, phi, magneticPotential);
 
 cleanup:
 	if (polynomials != NULL) free(polynomials);
