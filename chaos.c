@@ -27,6 +27,8 @@ void usage(const char *name);
 int yearFraction(long year, long month, long day, double* fractionalYear);
 int calculateField(double r, double theta, double phi, int maxN, double *gnm, double *hnm, double *polynomials, double *derivatives, double *aoverrpowers, double *bn, double *be, double *bc);
 
+int loadModel(const char *filename, int *minimumN, int *maximumN, int *numberOfTimes, size_t *numberOfTerms, int *bSplineOrder, int *bSplineSteps, double **times, double **gTimeSeries, double **hTimeSeries, double **gNow, double **hNow, double **polynomials, double **derivatives, double **aoverrpowers);
+
 
 char infoHeader[50];
 
@@ -47,6 +49,12 @@ int main (int argc, char **argv)
 	double theta = 0.0 * degrees;
 	double phi = 0.0 * degrees;
 
+	int nTimes = 0;
+	int maxN = 0;
+	int minN = 0;
+	int bSplineOrder = 0;
+	int bSplineSteps = 0;
+	size_t nTerms = 0;
 	double *polynomials = NULL;
 	double *derivatives = NULL;
 	double *aoverrpowers = NULL;
@@ -92,85 +100,12 @@ int main (int argc, char **argv)
 
 	sprintf(coreFile, "%s/%s", coeffDir, "CHAOS-7.9_core.shc");
 	printf("Core model file: %s\n", coreFile);
-	char line[255];
-
-	f = fopen(coreFile, "r");	
-	if (f == NULL)
+	status = loadModel(coreFile, &minN, &maxN, &nTimes, &nTerms, &bSplineOrder, &bSplineSteps, &times, &gnm, &hnm, &gnmNow, &hnmNow, &polynomials, &derivatives, &aoverrpowers);
+	if (status != 0)
 	{
-		printf("Could not open core SHC file.\n");
+		printf("Could not load core field model coefficients.\n");
 		goto cleanup;
 	}
-
-	int minN, maxN, nTimes, bSplineOrder, bSplineSteps; 
-	while (fgets(line, 255, f) != NULL && line[0] == '#');
-	sscanf(line, "%d %d %d %d %d", &minN, &maxN, &nTimes, &bSplineOrder, &bSplineSteps);
-
-	printf("MaxN: %d, nTimes: %d\n", maxN, nTimes);
-
-	size_t nTerms = gsl_sf_legendre_array_n(maxN);
-	polynomials = malloc(nTerms * sizeof(double));
-	derivatives = malloc(nTerms * sizeof(double));
-	aoverrpowers = malloc(maxN * sizeof(double));
-	times = (double*)malloc(nTimes * sizeof(double));
-	// Uses more memory than needed for hnm. Could be revised
-	gnm = (double*)malloc(maxN * (maxN + 2) * nTimes * sizeof(double));
-	hnm = (double*)malloc(maxN * (maxN + 2) * nTimes * sizeof(double));
-	gnmNow = (double*)malloc(maxN * (maxN + 2) * sizeof(double));
-	hnmNow = (double*)malloc(maxN * (maxN + 2) * sizeof(double));
-	if (polynomials == NULL || aoverrpowers == NULL || times == NULL || gnm == NULL || hnm == NULL || gnmNow == NULL || hnmNow == NULL)
-	{
-		printf("Cannot remember anything. Check my memory.\n");
-		goto cleanup;
-	}
-
-	int il, im;
-	for (int i = 0; i < nTimes; i++)
-	{
-		fscanf(f, "%lf", times + i);
-	}
-	size_t gRead = 0;
-	size_t hRead = 0;
-	for (int i = 0; i < maxN * (maxN+2); i++)
-	{
-		fscanf(f, "%d %d", &il, &im);
-		if (im >= 0)
-		{
-			for (int i = 0; i < nTimes; i++)
-			{
-				fscanf(f, "%lf", gnm + gRead);
-				gRead++;
-			}
-		}
-		else 
-		{
-			for (int i = 0; i < nTimes; i++)
-			{
-				fscanf(f, "%lf", hnm + hRead);
-				hRead++;
-			}
-		}
-	}
-	// for (int i = 0; i < nTimes; i++)
-	// {
-	// 	printf("t = %lf\n", times[i]);
-	// }
-	// gRead = 0;
-	// hRead = 0;
-	// for (int l = 1; l <= maxN; l++)
-	// {
-	// 	for (int m = 0; m <= l; m++)
-	// 	{
-	// 		printf("g_%d_%d = %lf\n", l, m, gnm[gRead*nTimes + 0]);
-	// 		gRead++;
-	// 		if (m > 0)
-	// 		{
-	// 			printf("h_%d_%d = %lf\n", l, m, hnm[hRead*nTimes + 0]);
-	// 			hRead++;
-	// 		}
-	// 	}
-	// }
-	fclose(f);
-	f = NULL;
 
 	// Interpolate core model coefficients to the current day. 
 	// A resolution of 1 day will be sufficient for CHAOS core model calculations
@@ -205,13 +140,14 @@ int main (int argc, char **argv)
 		deltaTime = times[coefficientTimeIndexPlus1] - times[coefficientTimeIndex];
 	}
 	timeFraction = (fractionalYear - times[coefficientTimeIndex]) / deltaTime;
-	for (int i = 0; i < maxN * (maxN + 2); i++)
+	printf ("maxN: %d\n", maxN);
+	for (int i = (minN-1)*((minN-1) + 2); i < maxN * (maxN + 2); i++)
 	{
 		gnmNow[i] = gnm[i*nTimes + coefficientTimeIndex] + timeFraction * (gnm[i*nTimes + coefficientTimeIndexPlus1] - gnm[i*nTimes + coefficientTimeIndex]);
 		// Calculates some irrelevant values at the end...
 		hnmNow[i] = hnm[i*nTimes + coefficientTimeIndex] + timeFraction * (hnm[i*nTimes + coefficientTimeIndexPlus1] - hnm[i*nTimes + coefficientTimeIndex]);
+		// printf("%lf %lf\n", gnmNow[i], hnmNow[i]);
 	}
-
 
 	char *magVariableNames[NMAGVARS] = {
 		"Timestamp",
@@ -397,6 +333,102 @@ int calculateField(double r, double theta, double phi, int maxN, double *gnm, do
 	*bn = -btheta;
 	*be = bphi;
 	*bc = -br;
+
+	return 0;
+
+}
+
+int loadModel(const char *filename, int *minimumN, int *maximumN, int *numberOfTimes, size_t *numberOfTerms, int *bSplineOrder, int *bSplineSteps, double **times, double **gTimeSeries, double **hTimeSeries, double **gNow, double **hNow, double **polynomials, double **derivatives, double **aoverrpowers)
+{
+	int status = 0;
+	char line[255];
+
+	FILE *f = fopen(filename, "r");	
+	if (f == NULL)
+	{
+		printf("Could not open core SHC file.\n");
+		status = -1;
+		goto cleanup;
+	}
+
+	int minN = 0, maxN = 0, nTimes = 0, splineOrder = 0, splineSteps = 0; 
+	size_t nTerms = 0;
+	while (fgets(line, 255, f) != NULL && line[0] == '#');
+	sscanf(line, "%d %d %d %d %d", &minN, &maxN, &nTimes, &splineOrder, &splineSteps);
+
+	*minimumN = minN;
+	*maximumN = maxN;
+	*numberOfTimes = nTimes;
+	*bSplineOrder = splineOrder;
+	*bSplineSteps = splineSteps;
+
+	nTerms = gsl_sf_legendre_array_n(maxN);
+	*numberOfTerms = nTerms;
+
+	*polynomials = malloc(nTerms * sizeof(double));
+	*derivatives = malloc(nTerms * sizeof(double));
+	*aoverrpowers = malloc(maxN * sizeof(double));
+	*times = (double*)malloc(nTimes * sizeof(double));
+	// Uses more memory than needed for hnm. Could be revised
+	*gTimeSeries = (double*)malloc(maxN * (maxN + 2) * nTimes * sizeof(double));
+	*hTimeSeries = (double*)malloc(maxN * (maxN + 2) * nTimes * sizeof(double));
+	*gNow = (double*)malloc(maxN * (maxN + 2) * sizeof(double));
+	*hNow = (double*)malloc(maxN * (maxN + 2) * sizeof(double));
+	if (*polynomials == NULL || *aoverrpowers == NULL || *times == NULL || *gTimeSeries == NULL || *hTimeSeries == NULL || *gNow == NULL || *hNow == NULL)
+	{
+		printf("Cannot remember anything. Check my memory.\n");
+		goto cleanup;
+	}
+
+	int il, im;
+	for (int i = 0; i < nTimes; i++)
+	{
+		fscanf(f, "%lf", *times + i);
+	}
+	size_t gRead = 0;
+	size_t hRead = 0;
+	for (int i = minN * (minN + 2); i <= maxN * (maxN+2); i++)
+	{
+		fscanf(f, "%d %d", &il, &im);
+		if (im >= 0)
+		{
+			for (int i = 0; i < nTimes; i++)
+			{
+				fscanf(f, "%lf", *gTimeSeries + gRead);
+				gRead++;
+			}
+		}
+		else 
+		{
+			for (int i = 0; i < nTimes; i++)
+			{
+				fscanf(f, "%lf", *hTimeSeries + hRead);
+				hRead++;
+			}
+		}
+	}
+	// for (int i = 0; i < nTimes; i++)
+	// {
+	// 	printf("t = %lf\n", times[i]);
+	// }
+	// gRead = 0;
+	// hRead = 0;
+	// for (int l = minN; l <= maxN; l++)
+	// {
+	// 	for (int m = 0; m <= l; m++)
+	// 	{
+	// 		printf("g_%d_%d = %lf\n", l, m, gnm[gRead*nTimes + 0]);
+	// 		gRead++;
+	// 		if (m > 0)
+	// 		{
+	// 			printf("h_%d_%d = %lf\n", l, m, hnm[hRead*nTimes + 0]);
+	// 			hRead++;
+	// 		}
+	// 	}
+	// }
+
+cleanup:	
+	if (f != NULL) fclose(f);
 
 	return 0;
 
