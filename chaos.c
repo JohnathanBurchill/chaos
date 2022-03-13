@@ -47,6 +47,7 @@ int main (int argc, char **argv)
 	double phi = 0.0 * degrees;
 
 	double *polynomials = NULL;
+	double *derivatives = NULL;
 	double *aoverrpowers = NULL;
 	double *times = NULL;
 	double *gnm = NULL;
@@ -107,6 +108,7 @@ int main (int argc, char **argv)
 
 	size_t nTerms = gsl_sf_legendre_array_n(maxN);
 	polynomials = malloc(nTerms * sizeof(double));
+	derivatives = malloc(nTerms * sizeof(double));
 	aoverrpowers = malloc(maxN * sizeof(double));
 	times = (double*)malloc(nTimes * sizeof(double));
 	// Uses more memory than needed for hnm. Could be revised
@@ -218,7 +220,9 @@ int main (int argc, char **argv)
 	};
 	// Magnetic field input data
 
-	if (getInputFilename(satellite, year, month, day, magDir, "HR_1B", magFilename))
+	// LR_1B product for development, much faster load time than HR_1B
+	if (getInputFilename(satellite, year, month, day, magDir, "LR_1B", magFilename))
+	// if (getInputFilename(satellite, year, month, day, magDir, "HR_1B", magFilename))
     {
         fprintf(stdout, "%sMAG HR_1B input file is not available. Exiting.\n", infoHeader);
         exit(1);
@@ -234,8 +238,9 @@ int main (int argc, char **argv)
 	double x = 0;
 	double magneticPotential = 0.0;
 	double magneticPotentialN = 0.0;
-	double brN = 0.0;
 	double br = 0.0;
+	double btheta = 0.0;
+	double magneticPotentialForTheta = 0.0;
 
 	double aoverr = 1.0;
 
@@ -243,13 +248,16 @@ int main (int argc, char **argv)
 		printf("Calculating magnetic potential...\n");
 	else
 		printf("Calculation interrupted.\n");
-	for (size_t t = 0; t < nInputs && keep_running == 1; t+=25)
+	
+	// for (size_t t = 0; t < nInputs && keep_running == 1; t++)
+	for (size_t t = 0; t < nInputs && keep_running == 1; t+=1*60*5)
+	// for (size_t t = 0; t < nInputs && keep_running == 1; t+=50*60*5)
 	{
 		time = ((double*)magVariables[0])[t];
 	 	theta = (90.0 - ((double*)magVariables[1])[t]) * degrees;
 		phi = ((double*)magVariables[2])[t] * degrees;
 		r = ((double*)magVariables[3])[t]/1000.;
-		status = gsl_sf_legendre_array(GSL_SF_LEGENDRE_SCHMIDT, maxN, cos(theta), polynomials);
+		status = gsl_sf_legendre_deriv_array(GSL_SF_LEGENDRE_SCHMIDT, maxN, cos(theta), polynomials, derivatives);
 		if (status)
 		{
 			printf("status: %s\n", gsl_strerror(status));
@@ -263,25 +271,43 @@ int main (int argc, char **argv)
 		}
 
 		magneticPotential = 0.0;
+		br = 0.0;
+		btheta = 0.0;
 		gRead = 0;
 		hRead = 0;
 		for (int n = 1; n <= maxN; n++)
 		{
 			magneticPotentialN = gnmNow[gRead] * polynomials[gsl_sf_legendre_array_index(n, 0)];
+			magneticPotentialForTheta = gnmNow[gRead] * derivatives[gsl_sf_legendre_array_index(n, 0)] * (-sin(theta));
 			gRead++;
 			for (int m = 1; m <= n; m++)
 			{
 				magneticPotentialN += (gnmNow[gRead] * cos(phi) + hnmNow[hRead] * sin(phi) ) * polynomials[gsl_sf_legendre_array_index(n, m)];
+				magneticPotentialForTheta += (gnmNow[gRead] * cos(phi) + hnmNow[hRead] * sin(phi) ) * derivatives[gsl_sf_legendre_array_index(n, m)] * (-sin(theta));
+
 				gRead++;
 				hRead++;
 			}
-			magneticPotential += magneticPotentialN * aoverrpowers[n-1] * a;
+			magneticPotentialN *= aoverrpowers[n-1] * a;
+			magneticPotentialForTheta *= aoverrpowers[n-1] * a;
+
+			magneticPotential += magneticPotentialN;
+			// Br = -di potential by di r
+			br += -magneticPotentialN * (-(n+1.) / r);
+			// Btheta = -di potential by di theta / r
+			btheta += -magneticPotentialForTheta / r;
 		}
-		printf("magneticPotential(time=%lf, r=%lf, colatitude=%lf, longitude=%lf) = %lf\n", time, r, theta/degrees, phi/degrees, magneticPotential);
+		// printf("t=%ld\n", t);
+		// With magnetic potential
+		printf("magneticPotential(time=%.1lf, r=%6.1lf, colatitude=%5.1lf, longitude=%5.1lf) = %.1lf, br = %.1lf, btheta = %.1lf nT\n", time, r, theta/degrees, phi/degrees, magneticPotential, br, btheta);
+		// Field vectors only
+		printf("time=%.1lf, r=%6.1lf, colatitude=%5.1lf, longitude=%5.1lf: br = %.1lf, btheta = %.1lf nT\n", time, r, theta/degrees, phi/degrees, br, btheta);
+
 	}
 
 cleanup:
 	if (polynomials != NULL) free(polynomials);
+	if (derivatives != NULL) free(derivatives);
 	if (aoverrpowers != NULL) free(aoverrpowers);
 	if (times != NULL) free(times);
 	if (gnm != NULL) free(gnm);
