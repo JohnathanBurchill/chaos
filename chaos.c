@@ -25,7 +25,7 @@ static void sig_handler(int ignored)
 
 void usage(const char *name);
 int yearFraction(long year, long month, long day, double* fractionalYear);
-int calculateField(double r, double theta, double phi, int maxN, double *gnm, double *hnm, double *polynomials, double *derivatives, double *aoverrpowers, double *bn, double *be, double *bc);
+int calculateField(double r, double theta, double phi, int minN, int maxN, double *gnm, double *hnm, double *polynomials, double *derivatives, double *aoverrpowers, double *bn, double *be, double *bc);
 
 int loadModel(const char *filename, int *minimumN, int *maximumN, int *numberOfTimes, size_t *numberOfTerms, int *bSplineOrder, int *bSplineSteps, double **times, double **gTimeSeries, double **hTimeSeries, double **gNow, double **hNow, double **polynomials, double **derivatives, double **aoverrpowers);
 
@@ -64,6 +64,21 @@ int main (int argc, char **argv)
 	double *gnmNow = NULL;
 	double *hnmNow = NULL;
 
+	int nTimesCrustal = 0;
+	int maxNCrustal = 0;
+	int minNCrustal = 0;
+	int bSplineOrderCrustal = 0;
+	int bSplineStepsCrustal = 0;
+	size_t nTermsCrustal = 0;
+	double *polynomialsCrustal = NULL;
+	double *derivativesCrustal = NULL;
+	double *aoverrpowersCrustal = NULL;
+	double *timesCrustal = NULL;
+	double *gnmCrustal = NULL;
+	double *hnmCrustal = NULL;
+	double *gnmNowCrustal = NULL;
+	double *hnmNowCrustal = NULL;
+
 	size_t nInputs = 0;
 	uint8_t *magVariables[NMAGVARS];
 
@@ -76,6 +91,7 @@ int main (int argc, char **argv)
 	FILE *f = NULL;
 
 	char coreFile[FILENAME_MAX];
+	char crustalFile[FILENAME_MAX];
 	char magFilename[FILENAME_MAX];
 
 	if (argc != 5)
@@ -98,6 +114,7 @@ int main (int argc, char **argv)
     }
 	sprintf(infoHeader, "CHAOS %s: ", satDate);
 
+	// Core model coefficients
 	sprintf(coreFile, "%s/%s", coeffDir, "CHAOS-7.9_core.shc");
 	printf("Core model file: %s\n", coreFile);
 	status = loadModel(coreFile, &minN, &maxN, &nTimes, &nTerms, &bSplineOrder, &bSplineSteps, &times, &gnm, &hnm, &gnmNow, &hnmNow, &polynomials, &derivatives, &aoverrpowers);
@@ -107,7 +124,7 @@ int main (int argc, char **argv)
 		goto cleanup;
 	}
 
-	// Interpolate core model coefficients to the current day. 
+	// Interpolate core model coefficients to the current day.
 	// A resolution of 1 day will be sufficient for CHAOS core model calculations
 	// Given that inputs are from daily MAG_HR CDF files, we only need
 	// to interpolate once.
@@ -149,6 +166,29 @@ int main (int argc, char **argv)
 		// printf("%lf %lf\n", gnmNow[i], hnmNow[i]);
 	}
 
+	// Crustal model coefficients
+	sprintf(crustalFile, "%s/%s", coeffDir, "CHAOS-7.9_static.shc");
+	printf("Crustal model file: %s\n", crustalFile);
+	status = loadModel(crustalFile, &minNCrustal, &maxNCrustal, &nTimesCrustal, &nTermsCrustal, &bSplineOrderCrustal, &bSplineStepsCrustal, &timesCrustal, &gnmCrustal, &hnmCrustal, &gnmNowCrustal, &hnmNowCrustal, &polynomialsCrustal, &derivativesCrustal, &aoverrpowersCrustal);
+	if (status != 0)
+	{
+		printf("Could not load crustal field model coefficients.\n");
+		goto cleanup;
+	}
+	// Crustal field is static, so copy g and h into gNow and h Now
+	// simply loops over all indices, but those for n < 21 are irrelevant.
+	// If there is more than 1 time for the crustal field, abort
+	if (nTimesCrustal != 1)
+	{
+		printf("Expected 1 crustal field time, got %d\n", nTimesCrustal);
+		goto cleanup;
+	}
+	for (int i = 0; i < nTermsCrustal; i++)
+	{
+		gnmNowCrustal[i] = gnmCrustal[i];
+		hnmNowCrustal[i] = hnmCrustal[i];
+	}
+
 	char *magVariableNames[NMAGVARS] = {
 		"Timestamp",
 		"Latitude",
@@ -183,13 +223,21 @@ int main (int argc, char **argv)
 	double bce = 0.0;
 	double bcc = 0.0;
 
-	double aoverr = 1.0;
+	// Crustal field
+	double bcrn = 0.0;
+	double bcre = 0.0;
+	double bcrc = 0.0;
 
 	if (keep_running == 1)
 		printf("Calculating magnetic potential...\n");
 	else
 		printf("Calculation interrupted.\n");
 	
+
+	double maxBcrn = 0.0;
+	double maxBcre = 0.0;
+	double maxBcrc = 0.0;
+
 	for (size_t t = 0; t < nInputs && keep_running == 1; t++)
 	// for (size_t t = 0; t < nInputs && keep_running == 1; t+=1*60*5)
 	// for (size_t t = 0; t < nInputs && keep_running == 1; t+=50*60*5)
@@ -199,10 +247,17 @@ int main (int argc, char **argv)
 		phi = ((double*)magVariables[2])[t] * degrees;
 		r = ((double*)magVariables[3])[t]/1000.;
 
-		status = calculateField(r, theta, phi, maxN, gnmNow, hnmNow, polynomials, derivatives, aoverrpowers, &bcn, &bce, &bcc);
+		status = calculateField(r, theta, phi, minN, maxN, gnmNow, hnmNow, polynomials, derivatives, aoverrpowers, &bcn, &bce, &bcc);
 		if (status != 0)
 		{
 			printf("Could not calculate core field\n");
+			goto cleanup;
+		}
+
+		status = calculateField(r, theta, phi, minNCrustal, maxNCrustal, gnmNowCrustal, hnmNowCrustal, polynomialsCrustal, derivativesCrustal, aoverrpowersCrustal, &bcrn, &bcre, &bcrc);
+		if (status != 0)
+		{
+			printf("Could not calculate crustal field\n");
 			goto cleanup;
 		}
 
@@ -217,9 +272,18 @@ int main (int argc, char **argv)
 		bc = ((double*)magVariables[4])[t*3 + 2];
 		// printf("time=%.1lf: model/measured=(%8.1lf/%8.1lf, %8.1lf/%8.1lf, %8.1lf/%8.1lf) nT (NEC)\n", time, -btheta, bn, bphi, be, -br, bc);
 		// Delta-B (core removed)
-		printf("time=%.1lf: DeltaB = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, bn - bcn, be - bce, bc - bcc);
+		// printf("time=%.1lf: DeltaB = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, bn - bcn, be - bce, bc - bcc);
+		// Delta-B (core and crust removed)
+		// printf("time=%.1lf: DeltaB = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, bn - bcn - bcrn, be - bce - bcre, bc - bcc - bcrc);
+		// B crustal
+		// printf("time=%.1lf: Crustal B = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, bcrn, bcre, bcrc);
+		// Max crustal magnitudes
+		if (fabs(bcrn) > maxBcrn) maxBcrn = fabs(bcrn);
+		if (fabs(bcre) > maxBcre) maxBcre = fabs(bcre);
+		if (fabs(bcrc) > maxBcrc) maxBcrc = fabs(bcrc);
 
 	}
+	printf("Max Crustal B magnitudes = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", maxBcrn, maxBcre, maxBcrc);
 
 cleanup:
 	if (polynomials != NULL) free(polynomials);
@@ -230,6 +294,14 @@ cleanup:
 	if (hnm != NULL) free(hnm);
 	if (gnmNow != NULL) free(gnmNow);
 	if (hnmNow != NULL) free(hnmNow);
+	if (polynomialsCrustal != NULL) free(polynomialsCrustal);
+	if (derivativesCrustal != NULL) free(derivativesCrustal);
+	if (aoverrpowersCrustal != NULL) free(aoverrpowersCrustal);
+	if (timesCrustal != NULL) free(timesCrustal);
+	if (gnmCrustal != NULL) free(gnmCrustal);
+	if (hnmCrustal != NULL) free(hnmCrustal);
+	if (gnmNowCrustal != NULL) free(gnmNowCrustal);
+	if (hnmNowCrustal != NULL) free(hnmNowCrustal);
 	for (int i = 0; i < NMAGVARS; i++)
 	{
 		if (magVariables[i] != NULL) free(magVariables[i]);
@@ -274,7 +346,7 @@ int yearFraction(long year, long month, long day, double* fractionalYear)
     return 0;
 }
 
-int calculateField(double r, double theta, double phi, int maxN, double *gnm, double *hnm, double *polynomials, double *derivatives, double *aoverrpowers, double *bn, double *be, double *bc)
+int calculateField(double r, double theta, double phi, int minN, int maxN, double *gnm, double *hnm, double *polynomials, double *derivatives, double *aoverrpowers, double *bn, double *be, double *bc)
 {
 	double a = 6371.2;
 	double aoverr = a/r;
@@ -303,7 +375,7 @@ int calculateField(double r, double theta, double phi, int maxN, double *gnm, do
 		return -1;
 	}
 
-	for (int n = 1; n <= maxN; n++)
+	for (int n = minN; n <= maxN; n++)
 	{
 		magneticPotentialN = gnm[gRead] * polynomials[gsl_sf_legendre_array_index(n, 0)];
 		magneticPotentialForThetaN = gnm[gRead] * derivatives[gsl_sf_legendre_array_index(n, 0)] * (-sin(theta));
