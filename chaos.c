@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <signal.h>
 
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_sf_legendre.h>
@@ -12,6 +13,16 @@
 #define NMAGVARS 5
 
 // declare functions
+
+// Handle Ctrl-C
+// From https://stackoverflow.com/questions/4217037/catch-ctrl-c-in-c
+volatile sig_atomic_t keep_running = 1;
+static void sig_handler(int ignored)
+{
+    (void)ignored; // Avoid warning
+    keep_running = 0;
+}
+
 void usage(const char *name);
 int yearFraction(long year, long month, long day, double* fractionalYear);
 
@@ -20,6 +31,9 @@ char infoHeader[50];
 
 int main (int argc, char **argv)
 {
+
+	// Handle Ctrl-C
+	signal(SIGINT, sig_handler);
 
 	int status = 0;
 
@@ -223,8 +237,11 @@ int main (int argc, char **argv)
 
 	double aoverr = 1.0;
 
-	printf("Calculating magnetic potential...\n");
-	for (size_t t = 0; t < nInputs; t+=25)
+	if (keep_running == 1)
+		printf("Calculating magnetic potential...\n");
+	else
+		printf("Calculation interrupted.\n");
+	for (size_t t = 0; t < nInputs && keep_running == 1; t+=25)
 	{
 		// Interpolate coefficients to magnetic time.
 		time = ((double*)magVariables[0])[t];

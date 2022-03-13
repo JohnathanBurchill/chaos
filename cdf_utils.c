@@ -7,6 +7,9 @@
 #include <string.h>
 #include <fts.h>
 #include <cdf.h>
+#include <signal.h>
+
+extern volatile sig_atomic_t keep_running;
 
 extern char infoHeader[50];
 
@@ -62,7 +65,7 @@ void loadCdf(const char *cdfFile, char *variables[], int nVariables, uint8_t **d
     }
     
 
-    for (uint8_t i = 0; i < nVariables; i++)
+    for (uint8_t i = 0; i < nVariables && keep_running == 1; i++)
     {
         varNum = CDFgetVarNum(cdfId, variables[i]);
         status = CDFreadzVarAllByVarID(cdfId, varNum, &numRecs, &dataType, &numElems, &numDims, dimSizes, &recVary, dimVarys, &data);
