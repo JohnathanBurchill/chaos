@@ -27,10 +27,6 @@ USER root
 RUN cd /home/dataflow/cdf38_0-dist && \
 make INSTALLDIR=/usr/local install && \
 ldconfig
-COPY tiilib.tar.gz /home/dataflow/.
-RUN cd / && \
-tar zxvf /home/dataflow/tiilib.tar.gz && \
-rm /home/dataflow/tiilib.tar.gz
 COPY gsl-latest.tar.gz /home/dataflow/.
 RUN cd /home/dataflow && tar xf gsl-latest.tar.gz
 RUN cd /home/dataflow/gsl-2.7.1 && \
