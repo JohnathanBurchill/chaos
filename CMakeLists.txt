@@ -23,7 +23,7 @@ FIND_LIBRARY(CBLAS gslcblas)
 
 # SET(LIBS ${LIBS} ${MATH} ${LIBXML2_LIBRARIES} ${ZLIB_LIBRARIES})
 
-ADD_EXECUTABLE(chaos chaos.c)
-TARGET_LINK_LIBRARIES(chaos ${LIBS} -lgsl -lm -lgslcblas)
+ADD_EXECUTABLE(chaos chaos.c cdf_utils.c)
+TARGET_LINK_LIBRARIES(chaos ${LIBS} ${CDF} -lgsl -lm -lgslcblas)
 
 install(TARGETS chaos DESTINATION $ENV{HOME}/bin)

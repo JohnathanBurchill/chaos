@@ -1,3 +1,5 @@
+#include "cdf_utils.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -6,8 +8,13 @@
 #include <gsl/gsl_sf_legendre.h>
 #include <gsl/gsl_math.h>
 
+#define NMAGVARS 5
 
-int main ()
+void usage(const char *name);
+
+char infoHeader[50];
+
+int main (int argc, char **argv)
 {
 
 	int status = 0;
@@ -27,14 +34,48 @@ int main ()
 	double *gnm = NULL;
 	double *hnm = NULL;
 
-	char *coreFile = "shc/CHAOS-7.9_core.shc";
-	char line[255];
-	char character = '\0';
+	size_t nInputs = 0;
+	uint8_t *magVariables[NMAGVARS];
 
-	FILE *f = fopen(coreFile, "r");	
+	// Timestamp, Latitude, Longitude, Radius, B_NEC
+	for (int i = 0; i < NMAGVARS; i++)
+	{
+		magVariables[i] = NULL;
+	}
+
+	FILE *f = NULL;
+
+	char coreFile[FILENAME_MAX];
+	char magFilename[FILENAME_MAX];
+
+	if (argc != 5)
+	{
+		usage(argv[0]);
+		goto cleanup;
+	}
+	char *satDate = argv[1];
+	char *coeffDir = argv[2];
+	char *magDir = argv[3];
+	char *outputDir = argv[4];
+
+	char satellite = satDate[0];
+	long year, month, day;
+    int valuesRead = sscanf(satDate+1, "%4ld%2ld%2ld", &year, &month, &day);
+    if (valuesRead != 3)
+    {
+        fprintf(stdout, "CHAOS called as:\n \"%s %s %s %s %s\"\n Unable to parse date \"\". Exiting.\n", argv[0], argv[1], argv[2], argv[3], argv[4]);
+		goto cleanup;
+    }
+	sprintf(infoHeader, "CHAOS %s: ", satDate);
+
+	sprintf(coreFile, "%s/%s", coeffDir, "CHAOS-7.9_core.shc");
+	printf("Core model file: %s\n", coreFile);
+	char line[255];
+
+	f = fopen(coreFile, "r");	
 	if (f == NULL)
 	{
-		printf("Could not open core model SHC file.\n");
+		printf("Could not open core SHC file.\n");
 		goto cleanup;
 	}
 
@@ -106,6 +147,27 @@ int main ()
 	fclose(f);
 	f = NULL;
 
+	char *magVariableNames[NMAGVARS] = {
+		"Timestamp",
+		"Longitude",
+		"Latitude",
+		"Radius",
+		"B_NEC"
+	};
+	// Magnetic field input data
+
+	if (getInputFilename(satellite, year, month, day, magDir, "HR_1B", magFilename))
+    {
+        fprintf(stdout, "%sMAG LR_1B input file is not available. Exiting.\n", infoHeader);
+        exit(1);
+    }
+	loadCdf(magFilename, magVariableNames, NMAGVARS, magVariables, &nInputs);
+	if (nInputs == 0)
+	{
+		printf("Found no inputs from MAG_HR file.\n");
+		goto cleanup;
+	}
+
 	double x = 0;
 	double magneticPotential = 0.0;
 	double magneticPotentialN = 0.0;
@@ -154,8 +216,21 @@ cleanup:
 	if (times != NULL) free(times);
 	if (gnm != NULL) free(gnm);
 	if (hnm != NULL) free(hnm);
+	for (int i = 0; i < NMAGVARS; i++)
+	{
+		if (magVariables[i] != NULL) free(magVariables[i]);
+	}
 	if (f != NULL) fclose(f);
 
 	return 0;
 }
 
+void usage(const char* name)
+{
+	printf("Usage: %s XYYYYMMDD chaosModelCoefficientsDir magCdfDir outputDir\n", name);
+	printf(" X: satellite letter A, B, or C\n");
+	printf(" YYYYMMDD: year, month, day\n");
+	printf(" chaosModelCoefficientsDir: directory containing SHC files\n");
+	printf(" magCdfDir: directory containing MAG_HR CDFs\n");
+	printf(" outputDir: directory to store magnetic field vectors\n");
+}
