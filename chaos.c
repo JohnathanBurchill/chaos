@@ -1,4 +1,5 @@
 #include "cdf_utils.h"
+#include "chaos_settings.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -79,6 +80,11 @@ int main (int argc, char **argv)
 	double *gnmNowCrustal = NULL;
 	double *hnmNowCrustal = NULL;
 
+
+	double *bCore = NULL;
+	double *bCrust = NULL;
+	double *bMeas = NULL;
+
 	size_t nInputs = 0;
 	uint8_t *magVariables[NMAGVARS];
 
@@ -88,11 +94,11 @@ int main (int argc, char **argv)
 		magVariables[i] = NULL;
 	}
 
-	FILE *f = NULL;
-
 	char coreFile[FILENAME_MAX];
 	char crustalFile[FILENAME_MAX];
 	char magFilename[FILENAME_MAX];
+
+	char outputFilename[FILENAME_MAX];
 
 	if (argc != 5)
 	{
@@ -214,30 +220,22 @@ int main (int argc, char **argv)
 	}
 
 	// Measured fields
-	double bn = 0.0;
-	double be = 0.0;
-	double bc = 0.0;
+	bMeas = (double*)malloc(nInputs * 3 * sizeof(double));
 
-	// Core field
-	double bcn = 0.0;
-	double bce = 0.0;
-	double bcc = 0.0;
-
-	// Crustal field
-	double bcrn = 0.0;
-	double bcre = 0.0;
-	double bcrc = 0.0;
+	// Model fields
+	bCore = (double*)malloc(nInputs * 3 * sizeof(double));
+	bCrust = (double*)malloc(nInputs * 3 * sizeof(double));
+	if (bMeas == NULL || bCore == NULL || bCrust == NULL)
+	{
+		printf("Memory issue.\n");
+		goto cleanup;
+	}
 
 	if (keep_running == 1)
 		printf("Calculating magnetic potential...\n");
 	else
 		printf("Calculation interrupted.\n");
 	
-
-	double maxBcrn = 0.0;
-	double maxBcre = 0.0;
-	double maxBcrc = 0.0;
-
 	for (size_t t = 0; t < nInputs && keep_running == 1; t++)
 	// for (size_t t = 0; t < nInputs && keep_running == 1; t+=1*60*5)
 	// for (size_t t = 0; t < nInputs && keep_running == 1; t+=50*60*5)
@@ -247,14 +245,14 @@ int main (int argc, char **argv)
 		phi = ((double*)magVariables[2])[t] * degrees;
 		r = ((double*)magVariables[3])[t]/1000.;
 
-		status = calculateField(r, theta, phi, minN, maxN, gnmNow, hnmNow, polynomials, derivatives, aoverrpowers, &bcn, &bce, &bcc);
+		status = calculateField(r, theta, phi, minN, maxN, gnmNow, hnmNow, polynomials, derivatives, aoverrpowers, bCore+t*3, bCore+t*3+1, bCore+t*3+2);
 		if (status != 0)
 		{
 			printf("Could not calculate core field\n");
 			goto cleanup;
 		}
 
-		status = calculateField(r, theta, phi, minNCrustal, maxNCrustal, gnmNowCrustal, hnmNowCrustal, polynomialsCrustal, derivativesCrustal, aoverrpowersCrustal, &bcrn, &bcre, &bcrc);
+		status = calculateField(r, theta, phi, minNCrustal, maxNCrustal, gnmNowCrustal, hnmNowCrustal, polynomialsCrustal, derivativesCrustal, aoverrpowersCrustal, bCrust+t*3, bCrust+t*3+1, bCrust+t*3+2);
 		if (status != 0)
 		{
 			printf("Could not calculate crustal field\n");
@@ -267,9 +265,9 @@ int main (int argc, char **argv)
 		// Field vectors only
 //		printf("time=%.1lf, r=%6.1lf, latitude=%5.1lf, longitude=%6.1lf: (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, r, 90.0 - theta/degrees, phi/degrees, -btheta, bphi, -br);
 		// Compare model with measured fields
-		bn = ((double*)magVariables[4])[t*3 + 0];
-		be = ((double*)magVariables[4])[t*3 + 1];
-		bc = ((double*)magVariables[4])[t*3 + 2];
+		bMeas[t*3] = ((double*)magVariables[4])[t*3 + 0];
+		bMeas[t*3+1] = ((double*)magVariables[4])[t*3 + 1];
+		bMeas[t*3+2] = ((double*)magVariables[4])[t*3 + 2];
 		// printf("time=%.1lf: model/measured=(%8.1lf/%8.1lf, %8.1lf/%8.1lf, %8.1lf/%8.1lf) nT (NEC)\n", time, -btheta, bn, bphi, be, -br, bc);
 		// Delta-B (core removed)
 		// printf("time=%.1lf: DeltaB = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, bn - bcn, be - bce, bc - bcc);
@@ -278,12 +276,25 @@ int main (int argc, char **argv)
 		// B crustal
 		// printf("time=%.1lf: Crustal B = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, bcrn, bcre, bcrc);
 		// Max crustal magnitudes
-		if (fabs(bcrn) > maxBcrn) maxBcrn = fabs(bcrn);
-		if (fabs(bcre) > maxBcre) maxBcre = fabs(bcre);
-		if (fabs(bcrc) > maxBcrc) maxBcrc = fabs(bcrc);
 
 	}
-	printf("Max Crustal B magnitudes = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", maxBcrn, maxBcre, maxBcrc);
+
+	// printf("Max Crustal B magnitudes = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", maxBcrn, maxBcre, maxBcrc);
+
+	// Export CDF of times, measured B, core B, and crustal B
+	double beginTime;
+	double endTime;
+	status = getOutputFilename(satellite, year, month, day, outputDir, &beginTime, &endTime, outputFilename);
+	if (status != 0)
+	{
+		printf("Could not get output filename.\n");
+		goto cleanup;
+	}
+	status = exportCdf(outputFilename, satellite, EXPORT_VERSION_STRING, times, bCore, bCrust, bMeas, nInputs);
+	if (status != 0)
+	{
+		printf("Could not export fields.\n");
+	}
 
 cleanup:
 	if (polynomials != NULL) free(polynomials);
@@ -306,7 +317,9 @@ cleanup:
 	{
 		if (magVariables[i] != NULL) free(magVariables[i]);
 	}
-	if (f != NULL) fclose(f);
+	if (bMeas != NULL) free(bMeas);
+	if (bCore != NULL) free(bCore);
+	if (bCrust != NULL) free(bCrust);
 
 	return 0;
 }
@@ -437,9 +450,9 @@ int loadModel(const char *filename, int *minimumN, int *maximumN, int *numberOfT
 	nTerms = gsl_sf_legendre_array_n(maxN);
 	*numberOfTerms = nTerms;
 
-	*polynomials = malloc(nTerms * sizeof(double));
-	*derivatives = malloc(nTerms * sizeof(double));
-	*aoverrpowers = malloc(maxN * sizeof(double));
+	*polynomials = (double *)malloc(nTerms * sizeof(double));
+	*derivatives = (double *)malloc(nTerms * sizeof(double));
+	*aoverrpowers = (double *)malloc(maxN * sizeof(double));
 	*times = (double*)malloc(nTimes * sizeof(double));
 	// Uses more memory than needed for hnm. Could be revised
 	*gTimeSeries = (double*)malloc(maxN * (maxN + 2) * nTimes * sizeof(double));

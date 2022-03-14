@@ -18,5 +18,18 @@ void closeCdf(CDFid id);
 
 int getInputFilename(const char satelliteLetter, long year, long month, long day, const char *path, const char *dataset, char *filename);
 
+int getOutputFilename(const char satellite, long year, long month, long day, const char *exportDir, double *beginTime, double *endTime, char *cdfFileName);
+
+CDFstatus exportCdf(const char *cdfFilename, const char satellite, const char *exportVersion, double *times, double *bCore, double *bCrust, double *bMeas, size_t nVectors);
+
+// void exportMetainfo(const char *slidemFilename, const char *fpFilename, const char *hmFilename, const char *magFilename, const char *modFilename, const char *modFilenamePrevious, long nVnecRecsPrev, time_t startTime, time_t stopTime);
+
+
+enum EXPORT_FLAGS {
+    EXPORT_OK = 0,
+    EXPORT_MEM = 1
+};
+
+
 #endif // _LOAD_CDF_H
 

@@ -1,5 +1,7 @@
 
 #include "cdf_utils.h"
+#include "chaos_settings.h"
+#include "cdf_vars.h"
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -171,5 +173,59 @@ int getInputFilename(const char satelliteLetter, long year, long month, long day
     {
         return CDF_FIND_FILENAME;
     }
+
+}
+
+int getOutputFilename(const char satellite, long year, long month, long day, const char *exportDir, double *beginTime, double *endTime, char *cdfFileName)
+{
+
+    if (satellite != 'A' && satellite != 'B' && satellite != 'C')
+    {
+        return -1;
+    }
+
+    *beginTime = computeEPOCH(year, month, day, 0, 0, 0, 0);
+    *endTime = computeEPOCH(year, month, day, 23, 59, 59, 999);
+
+    sprintf(cdfFileName, "%s/SW_%s_MAG%c%s_2__%04d%02d%02dT000000_%04d%02d%02dT235959_%s", exportDir, CHAOS_PRODUCT_TYPE, satellite, CHAOS_PRODUCT_CODE, (int)year, (int)month, (int)day, (int)year, (int)month, (int)day, EXPORT_VERSION_STRING);
+
+    return 0;
+
+}
+
+
+CDFstatus exportCdf(const char *cdfFilename, const char satellite, const char *exportVersion, double *times, double *bCore, double *bCrust, double *bMeas, size_t nVectors)
+{
+
+    fprintf(stdout, "%sExporting CHAOS model data.\n",infoHeader);
+
+    CDFid exportCdfId;
+    CDFstatus status = CDF_OK;
+    status = CDFcreateCDF((char *)cdfFilename, &exportCdfId);
+    if (status != CDF_OK)
+    {
+        printErrorMessage(status);
+        goto cleanup;
+    }
+    else
+    {
+
+        // export fpVariables
+        createVarFrom1DVar(exportCdfId, "Timestamp", CDF_EPOCH, 0, nVectors-1, times);
+        createVarFrom2DVar(exportCdfId, "B_core_nec", CDF_REAL8, 0, nVectors-1, bCore, 3);
+        createVarFrom2DVar(exportCdfId, "B_crust_nec", CDF_REAL8, 0, nVectors-1, bCrust, 3);
+        createVarFrom2DVar(exportCdfId, "B_meas_nec", CDF_REAL8, 0, nVectors-1, bMeas, 3);
+
+        // addAttributes(exportCdfId, SOFTWARE_VERSION_STRING, satellite, exportVersion, minTime, maxTime);
+
+        fprintf(stdout, "%sExported %ld records to %s.cdf\n", infoHeader, nVectors, cdfFilename);
+        fflush(stdout);
+        status = CDF_OK;
+
+    }
+
+cleanup:
+    closeCdf(exportCdfId);
+    return status;
 
 }
