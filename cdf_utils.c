@@ -10,6 +10,7 @@
 #include <fts.h>
 #include <cdf.h>
 #include <signal.h>
+#include <time.h>
 
 extern volatile sig_atomic_t keep_running;
 
@@ -227,5 +228,49 @@ CDFstatus exportCdf(const char *cdfFilename, const char satellite, const char *e
 cleanup:
     closeCdf(exportCdfId);
     return status;
+
+}
+
+
+void exportMetaInfo(const char *outputFilename, const char *magFilename, const char *chaosCoreFilename, const char *chaosStaticFilename, long nVectors, time_t startTime, time_t stopTime)
+{
+    // Level 2 product ZIP file neads a HDR file, which is constructed from a metainfo file.
+    char metaInfoFilename[FILENAME_MAX];
+    sprintf(metaInfoFilename, "%s.metainfo", outputFilename);
+    FILE *metaInfoFile = fopen(metaInfoFilename, "w");    
+    if (metaInfoFile == NULL)
+    {
+        fprintf(stdout, "%sError opening metainfo file for writing.\n", infoHeader);
+        return;
+    }
+
+    fprintf(metaInfoFile, "Type:%s\n", CHAOS_PRODUCT_TYPE);
+    fprintf(metaInfoFile, "ProcessingCenter:UOC\n");
+    fprintf(metaInfoFile, "Processor:UOC_CHAOS\n");
+    fprintf(metaInfoFile, "ProcessorVersion:%s\n", SOFTWARE_VERSION);
+    fprintf(metaInfoFile, "ProductError:0\n");
+
+    fprintf(metaInfoFile, "Input:%s\n", magFilename + strlen(magFilename) - 70);
+    fprintf(metaInfoFile, "Input:%s\n", chaosCoreFilename + strlen(chaosCoreFilename)-18);
+    fprintf(metaInfoFile, "Input:%s\n", chaosStaticFilename + strlen(chaosStaticFilename)-20);
+
+    char start[20] = {0};
+    struct tm * tstart = gmtime(&startTime);
+    sprintf(start, "%4d-%02d-%02dT%02d:%02d:%02d", tstart->tm_year+1900, tstart->tm_mon+1, tstart->tm_mday, tstart->tm_hour, tstart->tm_min, tstart->tm_sec);
+    fprintf(metaInfoFile, "ProcessStart:%s\n", start);
+    
+    char stop[20] = {0};
+    struct tm * tstop = gmtime(&stopTime);
+    sprintf(stop, "%4d-%02d-%02dT%02d:%02d:%02d", tstop->tm_year+1900, tstop->tm_mon+1, tstop->tm_mday, tstop->tm_hour, tstop->tm_min, tstop->tm_sec);
+    fprintf(metaInfoFile, "ProcessStop:%s\n", stop);
+
+    size_t sLen = strlen(outputFilename);
+    fprintf(metaInfoFile, "Output:%s.cdf\n", outputFilename + strlen(outputFilename) - 55);
+
+    fclose(metaInfoFile);
+    fprintf(stdout, "%sMetainfo file: %s\n", infoHeader, metaInfoFilename);
+
+    return;
+
 
 }

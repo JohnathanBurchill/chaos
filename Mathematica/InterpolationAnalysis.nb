@@ -1,0 +1,127 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 12.3' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      4183,        119]
+NotebookOptionsPosition[      2882,         88]
+NotebookOutlinePosition[      3272,        104]
+CellTagsIndexPosition[      3229,        101]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell[BoxData[
+ RowBox[{"degPerSec", "=", 
+  RowBox[{
+   RowBox[{"360.", "/", "95."}], "/", "60."}]}]], "Input",
+ CellChangeTimes->{{3.85627249474921*^9, 3.856272533471815*^9}},
+ CellLabel->"In[2]:=",ExpressionUUID->"b3565c56-3670-4fa6-a334-cac32d023495"],
+
+Cell[BoxData["0.06315789473684211`"], "Output",
+ CellChangeTimes->{{3.856272513813305*^9, 3.856272533778866*^9}},
+ CellLabel->"Out[2]=",ExpressionUUID->"2e99f73b-ec5c-4357-aaaf-629f264e0a1e"]
+}, Open  ]],
+
+Cell["\<\
+At highest crustal resolution of m = 184, the half wavelength in degrees is\
+\>", "Text",
+ CellChangeTimes->{{3.85627256617183*^9, 
+  3.856272590477685*^9}},ExpressionUUID->"bb190dd5-8cf9-4aee-b909-\
+d1acfc9d8f89"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"360.", "/", 
+  RowBox[{"(", 
+   RowBox[{"184", "*", "2"}], ")"}]}]], "Input",
+ CellChangeTimes->{{3.856272541751389*^9, 3.8562725623428926`*^9}},
+ CellLabel->"In[4]:=",ExpressionUUID->"c9697295-bdea-462b-8ee9-d59d5f4e881e"],
+
+Cell[BoxData["0.9782608695652174`"], "Output",
+ CellChangeTimes->{{3.856272557009808*^9, 3.856272562672761*^9}},
+ CellLabel->"Out[4]=",ExpressionUUID->"04ea9bfe-f499-4064-a594-19b9863f6764"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"1.", "/", "degPerSec"}]], "Input",
+ CellChangeTimes->{{3.856272598652144*^9, 3.8562726025504227`*^9}},
+ CellLabel->"In[5]:=",ExpressionUUID->"526f1be5-79fc-460c-ae59-c1bb5cf93ed3"],
+
+Cell[BoxData["15.833333333333332`"], "Output",
+ CellChangeTimes->{3.8562726028839407`*^9},
+ CellLabel->"Out[5]=",ExpressionUUID->"d41254d1-f31e-4615-8a8c-8f1e30890b75"]
+}, Open  ]],
+
+Cell["\<\
+Could interpolate every 16 seconds. Let\[CloseCurlyQuote]s interpolate every \
+4 s. to get eighth of a wavelength resolution.\
+\>", "Text",
+ CellChangeTimes->{{3.8562726148148327`*^9, 3.8562726873913097`*^9}, {
+  3.856272800455597*^9, 
+  3.8562728027682037`*^9}},ExpressionUUID->"68c4f5b1-22e4-4bcf-9b8b-\
+c73b2d432ed7"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"86400", "/", "8"}]], "Input",
+ CellChangeTimes->{{3.856272640434277*^9, 3.856272641852529*^9}},
+ CellLabel->"In[6]:=",ExpressionUUID->"69d901bd-e5d1-4129-9241-791cfd4d0b31"],
+
+Cell[BoxData["10800"], "Output",
+ CellChangeTimes->{3.856272642111485*^9},
+ CellLabel->"Out[6]=",ExpressionUUID->"d830c0ea-f684-44e3-a82b-be3d52025803"]
+}, Open  ]]
+},
+WindowSize->{808, 747},
+WindowMargins->{{4, Automatic}, {Automatic, 4}},
+FrontEndVersion->"12.3 for Mac OS X ARM (64-bit) (July 9, 2021)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"bbe61b92-37ec-482d-ad44-03415c8fae90"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 254, 5, 37, "Input",ExpressionUUID->"b3565c56-3670-4fa6-a334-cac32d023495"],
+Cell[837, 29, 191, 2, 42, "Output",ExpressionUUID->"2e99f73b-ec5c-4357-aaaf-629f264e0a1e"]
+}, Open  ]],
+Cell[1043, 34, 224, 5, 44, "Text",ExpressionUUID->"bb190dd5-8cf9-4aee-b909-d1acfc9d8f89"],
+Cell[CellGroupData[{
+Cell[1292, 43, 247, 5, 37, "Input",ExpressionUUID->"c9697295-bdea-462b-8ee9-d59d5f4e881e"],
+Cell[1542, 50, 190, 2, 42, "Output",ExpressionUUID->"04ea9bfe-f499-4064-a594-19b9863f6764"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[1769, 57, 204, 3, 37, "Input",ExpressionUUID->"526f1be5-79fc-460c-ae59-c1bb5cf93ed3"],
+Cell[1976, 62, 168, 2, 42, "Output",ExpressionUUID->"d41254d1-f31e-4615-8a8c-8f1e30890b75"]
+}, Open  ]],
+Cell[2159, 67, 330, 7, 73, "Text",ExpressionUUID->"68c4f5b1-22e4-4bcf-9b8b-c73b2d432ed7"],
+Cell[CellGroupData[{
+Cell[2514, 78, 197, 3, 37, "Input",ExpressionUUID->"69d901bd-e5d1-4129-9241-791cfd4d0b31"],
+Cell[2714, 83, 152, 2, 42, "Output",ExpressionUUID->"d830c0ea-f684-44e3-a82b-be3d52025803"]
+}, Open  ]]
+}
+]
+*)
+

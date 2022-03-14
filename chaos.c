@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 #include <math.h>
 #include <time.h>
 #include <signal.h>
@@ -12,6 +14,11 @@
 #include <gsl/gsl_math.h>
 
 #define NMAGVARS 5
+
+#define MAG_INPUT_DATASET "LR_1B"
+#define INTERPOLATION_SKIP 4 // 4 s
+//#define MAG_INPUT_DATASET "HR_1B"
+//#define INTERPOLATION_SKIP 200 // 4 s
 
 // declare functions
 
@@ -39,13 +46,15 @@ int main (int argc, char **argv)
 	// Handle Ctrl-C
 	signal(SIGINT, sig_handler);
 
+	time_t processingStartTime = time(NULL);
+
 	int status = 0;
 
 	printf("Hi\n");
 
 	double degrees = M_PI / 180.0;
 	double a = 6371.2;
-	double time = 0.;
+	double inputTime = 0.;
 	double r = 0.;
 	double theta = 0.0 * degrees;
 	double phi = 0.0 * degrees;
@@ -119,6 +128,23 @@ int main (int argc, char **argv)
 		goto cleanup;
     }
 	sprintf(infoHeader, "CHAOS %s: ", satDate);
+
+	double beginTime;
+	double endTime;
+	status = getOutputFilename(satellite, year, month, day, outputDir, &beginTime, &endTime, outputFilename);
+	if (status != 0)
+	{
+		printf("Could not get output filename.\n");
+		goto cleanup;
+	}
+	char fullOutputFilename[FILENAME_MAX];
+	sprintf(fullOutputFilename, "%s", outputFilename);
+	sprintf(fullOutputFilename+strlen(outputFilename), "%s", ".cdf");
+	if (access(fullOutputFilename, F_OK) == 0)
+	{
+		printf("%sOutput CDF file exists. Exiting.\n", infoHeader);
+		goto cleanup;
+	}
 
 	// Core model coefficients
 	sprintf(coreFile, "%s/%s", coeffDir, "CHAOS-7.9_core.shc");
@@ -203,15 +229,14 @@ int main (int argc, char **argv)
 		"B_NEC"
 	};
 	// Magnetic field input data
-
 	// LR_1B product for development, much faster load time than HR_1B
-	if (getInputFilename(satellite, year, month, day, magDir, "LR_1B", magFilename))
+	if (getInputFilename(satellite, year, month, day, magDir, MAG_INPUT_DATASET, magFilename))
 	// if (getInputFilename(satellite, year, month, day, magDir, "HR_1B", magFilename))
     {
         fprintf(stdout, "%sMAG HR_1B input file is not available. Exiting.\n", infoHeader);
         exit(1);
     }
-
+	printf("%sReading inputs from %s\n", infoHeader, magFilename);
 	loadCdf(magFilename, magVariableNames, NMAGVARS, magVariables, &nInputs);
 	if (nInputs == 0)
 	{
@@ -232,87 +257,72 @@ int main (int argc, char **argv)
 	}
 
 	if (keep_running == 1)
-		printf("Calculating magnetic potential...\n");
-	else
-		printf("Calculation interrupted.\n");
-	
-	for (size_t t = 0; t < nInputs && keep_running == 1; t++)
-	// for (size_t t = 0; t < nInputs && keep_running == 1; t+=1*60*5)
-	// for (size_t t = 0; t < nInputs && keep_running == 1; t+=50*60*5)
 	{
-		time = ((double*)magVariables[0])[t];
-	 	theta = (90.0 - ((double*)magVariables[1])[t]) * degrees;
-		phi = ((double*)magVariables[2])[t] * degrees;
-		r = ((double*)magVariables[3])[t]/1000.;
-
-		status = calculateField(r, theta, phi, minN, maxN, gnmNow, hnmNow, polynomials, derivatives, aoverrpowers, bCore+t*3, bCore+t*3+1, bCore+t*3+2);
-		if (status != 0)
+		printf("Calculating fields...\n");
+		for (size_t t = 0; t < nInputs && keep_running == 1; t += INTERPOLATION_SKIP)
+		// for (size_t t = 0; t < nInputs && keep_running == 1; t+=1*60*5)
+		// for (size_t t = 0; t < nInputs && keep_running == 1; t+=50*60*5)
 		{
-			printf("Could not calculate core field\n");
-			goto cleanup;
+			inputTime = ((double*)magVariables[0])[t];
+			theta = (90.0 - ((double*)magVariables[1])[t]) * degrees;
+			phi = ((double*)magVariables[2])[t] * degrees;
+			r = ((double*)magVariables[3])[t]/1000.;
+
+			status = calculateField(r, theta, phi, minN, maxN, gnmNow, hnmNow, polynomials, derivatives, aoverrpowers, bCore+t*3, bCore+t*3+1, bCore+t*3+2);
+			if (status != 0)
+			{
+				printf("Could not calculate core field\n");
+				goto cleanup;
+			}
+
+			status = calculateField(r, theta, phi, minNCrustal, maxNCrustal, gnmNowCrustal, hnmNowCrustal, polynomialsCrustal, derivativesCrustal, aoverrpowersCrustal, bCrust+t*3, bCrust+t*3+1, bCrust+t*3+2);
+			if (status != 0)
+			{
+				printf("Could not calculate crustal field\n");
+				goto cleanup;
+			}
+
+			// printf("t=%ld\n", t);
+			// With magnetic potential
+			// printf("magneticPotential(time=%.1lf, r=%6.1lf, colatitude=%5.1lf, longitude=%5.1lf) = %.1lf, br = %.1lf, btheta = %.1lf nT\n", time, r, theta/degrees, phi/degrees, magneticPotential, br, btheta);
+			// Field vectors only
+	//		printf("time=%.1lf, r=%6.1lf, latitude=%5.1lf, longitude=%6.1lf: (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", inputTime, r, 90.0 - theta/degrees, phi/degrees, -btheta, bphi, -br);
+			// Compare model with measured fields
+			bMeas[t*3] = ((double*)magVariables[4])[t*3 + 0];
+			bMeas[t*3+1] = ((double*)magVariables[4])[t*3 + 1];
+			bMeas[t*3+2] = ((double*)magVariables[4])[t*3 + 2];
+
+			// printf("time=%.1lf: model/measured=(%8.1lf/%8.1lf, %8.1lf/%8.1lf, %8.1lf/%8.1lf) nT (NEC)\n", inputTime, -btheta, bn, bphi, be, -br, bc);
+			// Delta-B (core removed)
+			// printf("time=%.1lf: DeltaB = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", inputTime, bn - bcn, be - bce, bc - bcc);
+			// Delta-B (core and crust removed)
+			// printf("time=%.1lf: DeltaB = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", inputTime, bn - bcn - bcrn, be - bce - bcre, bc - bcc - bcrc);
+			// B crustal
+			// printf("time=%.1lf: Crustal B = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", inputTime, bcrn, bcre, bcrc);
+			// Max crustal magnitudes
+
 		}
 
-		status = calculateField(r, theta, phi, minNCrustal, maxNCrustal, gnmNowCrustal, hnmNowCrustal, polynomialsCrustal, derivativesCrustal, aoverrpowersCrustal, bCrust+t*3, bCrust+t*3+1, bCrust+t*3+2);
-		if (status != 0)
-		{
-			printf("Could not calculate crustal field\n");
-			goto cleanup;
-		}
 
-		if (!isfinite(bCore[t*3])) bCore[t*3] = 9999999.0;
-		if (!isfinite(bCore[t*3+1])) bCore[t*3+1] = 9999999.0;
-		if (!isfinite(bCore[t*3+2])) bCore[t*3+2] = 9999999.0;
-
-		if (!isfinite(bCrust[t*3])) bCrust[t*3] = 9999999.0;
-		if (!isfinite(bCrust[t*3+1])) bCrust[t*3+1] = 9999999.0;
-		if (!isfinite(bCrust[t*3+2])) bCrust[t*3+2] = 9999999.0;
-
-		// printf("t=%ld\n", t);
-		// With magnetic potential
-		// printf("magneticPotential(time=%.1lf, r=%6.1lf, colatitude=%5.1lf, longitude=%5.1lf) = %.1lf, br = %.1lf, btheta = %.1lf nT\n", time, r, theta/degrees, phi/degrees, magneticPotential, br, btheta);
-		// Field vectors only
-//		printf("time=%.1lf, r=%6.1lf, latitude=%5.1lf, longitude=%6.1lf: (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, r, 90.0 - theta/degrees, phi/degrees, -btheta, bphi, -br);
-		// Compare model with measured fields
-		bMeas[t*3] = ((double*)magVariables[4])[t*3 + 0];
-		bMeas[t*3+1] = ((double*)magVariables[4])[t*3 + 1];
-		bMeas[t*3+2] = ((double*)magVariables[4])[t*3 + 2];
-
-		if (!isfinite(bMeas[t*3])) bMeas[t*3] = 9999999.0;
-		if (!isfinite(bMeas[t*3+1])) bMeas[t*3+1] = 9999999.0;
-		if (!isfinite(bMeas[t*3+2])) bMeas[t*3+2] = 9999999.0;
-
-
-
-		// printf("time=%.1lf: model/measured=(%8.1lf/%8.1lf, %8.1lf/%8.1lf, %8.1lf/%8.1lf) nT (NEC)\n", time, -btheta, bn, bphi, be, -br, bc);
-		// Delta-B (core removed)
-		// printf("time=%.1lf: DeltaB = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, bn - bcn, be - bce, bc - bcc);
-		// Delta-B (core and crust removed)
-		// printf("time=%.1lf: DeltaB = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, bn - bcn - bcrn, be - bce - bcre, bc - bcc - bcrc);
-		// B crustal
-		// printf("time=%.1lf: Crustal B = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, bcrn, bcre, bcrc);
-		// Max crustal magnitudes
 
 	}
-
 	if (keep_running == 0)
+	{
+		printf("%sInterrupted (SIGINT).\n", infoHeader);
 		goto cleanup;
+	}
 
 	// printf("Max Crustal B magnitudes = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", maxBcrn, maxBcre, maxBcrc);
 
 	// Export CDF of times, measured B, core B, and crustal B
-	double beginTime;
-	double endTime;
-	status = getOutputFilename(satellite, year, month, day, outputDir, &beginTime, &endTime, outputFilename);
-	if (status != 0)
-	{
-		printf("Could not get output filename.\n");
-		goto cleanup;
-	}
 	status = exportCdf(outputFilename, satellite, EXPORT_VERSION_STRING, (double*)magVariables[0], bCore, bCrust, bMeas, nInputs);
 	if (status != 0)
 	{
 		printf("Could not export fields.\n");
 	}
+
+	time_t processingStopTime = time(NULL);
+	exportMetaInfo(outputFilename, magFilename, coreFile, crustalFile, nInputs, processingStartTime, processingStopTime);
 
 cleanup:
 	if (polynomials != NULL) free(polynomials);
