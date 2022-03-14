@@ -259,6 +259,14 @@ int main (int argc, char **argv)
 			goto cleanup;
 		}
 
+		if (!isfinite(bCore[t*3])) bCore[t*3] = 9999999.0;
+		if (!isfinite(bCore[t*3+1])) bCore[t*3+1] = 9999999.0;
+		if (!isfinite(bCore[t*3+2])) bCore[t*3+2] = 9999999.0;
+
+		if (!isfinite(bCrust[t*3])) bCrust[t*3] = 9999999.0;
+		if (!isfinite(bCrust[t*3+1])) bCrust[t*3+1] = 9999999.0;
+		if (!isfinite(bCrust[t*3+2])) bCrust[t*3+2] = 9999999.0;
+
 		// printf("t=%ld\n", t);
 		// With magnetic potential
 		// printf("magneticPotential(time=%.1lf, r=%6.1lf, colatitude=%5.1lf, longitude=%5.1lf) = %.1lf, br = %.1lf, btheta = %.1lf nT\n", time, r, theta/degrees, phi/degrees, magneticPotential, br, btheta);
@@ -268,6 +276,13 @@ int main (int argc, char **argv)
 		bMeas[t*3] = ((double*)magVariables[4])[t*3 + 0];
 		bMeas[t*3+1] = ((double*)magVariables[4])[t*3 + 1];
 		bMeas[t*3+2] = ((double*)magVariables[4])[t*3 + 2];
+
+		if (!isfinite(bMeas[t*3])) bMeas[t*3] = 9999999.0;
+		if (!isfinite(bMeas[t*3+1])) bMeas[t*3+1] = 9999999.0;
+		if (!isfinite(bMeas[t*3+2])) bMeas[t*3+2] = 9999999.0;
+
+
+
 		// printf("time=%.1lf: model/measured=(%8.1lf/%8.1lf, %8.1lf/%8.1lf, %8.1lf/%8.1lf) nT (NEC)\n", time, -btheta, bn, bphi, be, -br, bc);
 		// Delta-B (core removed)
 		// printf("time=%.1lf: DeltaB = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", time, bn - bcn, be - bce, bc - bcc);
@@ -278,6 +293,9 @@ int main (int argc, char **argv)
 		// Max crustal magnitudes
 
 	}
+
+	if (keep_running == 0)
+		goto cleanup;
 
 	// printf("Max Crustal B magnitudes = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", maxBcrn, maxBcre, maxBcrc);
 
@@ -290,7 +308,7 @@ int main (int argc, char **argv)
 		printf("Could not get output filename.\n");
 		goto cleanup;
 	}
-	status = exportCdf(outputFilename, satellite, EXPORT_VERSION_STRING, times, bCore, bCrust, bMeas, nInputs);
+	status = exportCdf(outputFilename, satellite, EXPORT_VERSION_STRING, (double*)magVariables[0], bCore, bCrust, bMeas, nInputs);
 	if (status != 0)
 	{
 		printf("Could not export fields.\n");
