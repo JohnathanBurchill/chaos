@@ -92,7 +92,7 @@ int main (int argc, char **argv)
 
 	double *bCore = NULL;
 	double *bCrust = NULL;
-	double *bMeas = NULL;
+	double *dbMeas = NULL;
 
 	size_t nInputs = 0;
 	uint8_t *magVariables[NMAGVARS];
@@ -245,21 +245,51 @@ int main (int argc, char **argv)
 	}
 
 	// Measured fields
-	bMeas = (double*)malloc(nInputs * 3 * sizeof(double));
+	dbMeas = (double*)malloc(nInputs * 3 * sizeof(double));
 
 	// Model fields
 	bCore = (double*)malloc(nInputs * 3 * sizeof(double));
 	bCrust = (double*)malloc(nInputs * 3 * sizeof(double));
-	if (bMeas == NULL || bCore == NULL || bCrust == NULL)
+	if (dbMeas == NULL || bCore == NULL || bCrust == NULL)
 	{
 		printf("Memory issue.\n");
 		goto cleanup;
 	}
 
+	double deltaT = 0.0;
+	double interpolationFraction = 1.0;
+	size_t lastIndex = 0;
+
 	if (keep_running == 1)
 	{
 		printf("Calculating fields...\n");
-		for (size_t t = 0; t < nInputs && keep_running == 1; t += INTERPOLATION_SKIP)
+
+
+		// Get fields for first time
+		inputTime = ((double*)magVariables[0])[0];
+		theta = (90.0 - ((double*)magVariables[1])[0]) * degrees;
+		phi = ((double*)magVariables[2])[0] * degrees;
+		r = ((double*)magVariables[3])[0]/1000.;
+
+		status = calculateField(r, theta, phi, minN, maxN, gnmNow, hnmNow, polynomials, derivatives, aoverrpowers, bCore, bCore+1, bCore+2);
+		if (status != 0)
+		{
+			printf("Could not calculate core field\n");
+			goto cleanup;
+		}
+		status = calculateField(r, theta, phi, minNCrustal, maxNCrustal, gnmNowCrustal, hnmNowCrustal, polynomialsCrustal, derivativesCrustal, aoverrpowersCrustal, bCrust, bCrust+1, bCrust+2);
+		if (status != 0)
+		{
+			printf("Could not calculate crustal field\n");
+			goto cleanup;
+		}
+		dbMeas[0] = ((double*)magVariables[4])[0] - bCore[0] - bCrust[0];
+		dbMeas[1] = ((double*)magVariables[4])[1] - bCore[1] - bCrust[1];
+		dbMeas[2] = ((double*)magVariables[4])[2] - bCore[2] - bCrust[2];
+
+		lastIndex = 0;
+
+		for (size_t t = INTERPOLATION_SKIP; t < nInputs && keep_running == 1; t += INTERPOLATION_SKIP)
 		// for (size_t t = 0; t < nInputs && keep_running == 1; t+=1*60*5)
 		// for (size_t t = 0; t < nInputs && keep_running == 1; t+=50*60*5)
 		{
@@ -281,16 +311,37 @@ int main (int argc, char **argv)
 				printf("Could not calculate crustal field\n");
 				goto cleanup;
 			}
+			dbMeas[t*3]   = ((double*)magVariables[4])[t*3 + 0] - bCore[t*3 + 0] - bCrust[t*3 + 0];
+			dbMeas[t*3+1] = ((double*)magVariables[4])[t*3 + 1] - bCore[t*3 + 1] - bCrust[t*3 + 1];
+			dbMeas[t*3+2] = ((double*)magVariables[4])[t*3 + 2] - bCore[t*3 + 2] - bCrust[t*3 + 2];
 
+			// Linearly interpolate at skipped epochs
+			deltaT = ((double*)magVariables[0])[t] - ((double*)magVariables[0])[t - INTERPOLATION_SKIP];
+			if (deltaT <= 0.)
+				deltaT = 1.0; // arbitrary
+			for (size_t i = t-INTERPOLATION_SKIP + 1; i < t; i++)
+			{
+				interpolationFraction = (((double*)magVariables[0])[i] - ((double*)magVariables[0])[t-INTERPOLATION_SKIP]) / deltaT;
+				bCore[i*3] = bCore[(t-INTERPOLATION_SKIP)*3] + interpolationFraction * (bCore[t*3] - bCore[(t-INTERPOLATION_SKIP)*3]);
+				bCore[i*3+1] = bCore[(t-INTERPOLATION_SKIP)*3+1] + interpolationFraction * (bCore[t*3+1] - bCore[(t-INTERPOLATION_SKIP)*3+1]);
+				bCore[i*3+2] = bCore[(t-INTERPOLATION_SKIP)*3+2] + interpolationFraction * (bCore[t*3+2] - bCore[(t-INTERPOLATION_SKIP)*3+2]);
+
+				bCrust[i*3] = bCrust[(t-INTERPOLATION_SKIP)*3] + interpolationFraction * (bCrust[t*3] - bCrust[(t-INTERPOLATION_SKIP)*3]);
+				bCrust[i*3+1] = bCrust[(t-INTERPOLATION_SKIP)*3+1] + interpolationFraction * (bCrust[t*3+1] - bCrust[(t-INTERPOLATION_SKIP)*3+1]);
+				bCrust[i*3+2] = bCrust[(t-INTERPOLATION_SKIP)*3+2] + interpolationFraction * (bCrust[t*3+2] - bCrust[(t-INTERPOLATION_SKIP)*3+2]);
+
+				// Copy skipped measured fields
+				dbMeas[i*3]   = ((double*)magVariables[4])[i*3 + 0] - bCore[i*3 + 0] - bCrust[i*3 + 0];
+				dbMeas[i*3+1] = ((double*)magVariables[4])[i*3 + 1] - bCore[i*3 + 1] - bCrust[i*3 + 1];
+				dbMeas[i*3+2] = ((double*)magVariables[4])[i*3 + 2] - bCore[i*3 + 2] - bCrust[i*3 + 2];
+
+			}
+			lastIndex = t;
 			// printf("t=%ld\n", t);
 			// With magnetic potential
 			// printf("magneticPotential(time=%.1lf, r=%6.1lf, colatitude=%5.1lf, longitude=%5.1lf) = %.1lf, br = %.1lf, btheta = %.1lf nT\n", time, r, theta/degrees, phi/degrees, magneticPotential, br, btheta);
 			// Field vectors only
 	//		printf("time=%.1lf, r=%6.1lf, latitude=%5.1lf, longitude=%6.1lf: (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", inputTime, r, 90.0 - theta/degrees, phi/degrees, -btheta, bphi, -br);
-			// Compare model with measured fields
-			bMeas[t*3] = ((double*)magVariables[4])[t*3 + 0];
-			bMeas[t*3+1] = ((double*)magVariables[4])[t*3 + 1];
-			bMeas[t*3+2] = ((double*)magVariables[4])[t*3 + 2];
 
 			// printf("time=%.1lf: model/measured=(%8.1lf/%8.1lf, %8.1lf/%8.1lf, %8.1lf/%8.1lf) nT (NEC)\n", inputTime, -btheta, bn, bphi, be, -br, bc);
 			// Delta-B (core removed)
@@ -303,7 +354,33 @@ int main (int argc, char **argv)
 
 		}
 
+		// Calculate actual field for remaining inputs (up to INTEGRATION_SKIP-1 of them)
+		for (size_t t = lastIndex+1; t < nInputs && keep_running == 1; t ++)
+		{
+			inputTime = ((double*)magVariables[0])[t];
+			theta = (90.0 - ((double*)magVariables[1])[t]) * degrees;
+			phi = ((double*)magVariables[2])[t] * degrees;
+			r = ((double*)magVariables[3])[t]/1000.;
 
+			status = calculateField(r, theta, phi, minN, maxN, gnmNow, hnmNow, polynomials, derivatives, aoverrpowers, bCore+t*3, bCore+t*3+1, bCore+t*3+2);
+			if (status != 0)
+			{
+				printf("Could not calculate core field\n");
+				goto cleanup;
+			}
+
+			status = calculateField(r, theta, phi, minNCrustal, maxNCrustal, gnmNowCrustal, hnmNowCrustal, polynomialsCrustal, derivativesCrustal, aoverrpowersCrustal, bCrust+t*3, bCrust+t*3+1, bCrust+t*3+2);
+			if (status != 0)
+			{
+				printf("Could not calculate crustal field\n");
+				goto cleanup;
+			}
+
+			dbMeas[t*3]   = ((double*)magVariables[4])[t*3 + 0] - bCore[t*3 + 0] - bCrust[t*3 + 0];
+			dbMeas[t*3+1] = ((double*)magVariables[4])[t*3 + 1] - bCore[t*3 + 1] - bCrust[t*3 + 1];
+			dbMeas[t*3+2] = ((double*)magVariables[4])[t*3 + 2] - bCore[t*3 + 2] - bCrust[t*3 + 2];
+
+		}
 
 	}
 	if (keep_running == 0)
@@ -315,7 +392,7 @@ int main (int argc, char **argv)
 	// printf("Max Crustal B magnitudes = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", maxBcrn, maxBcre, maxBcrc);
 
 	// Export CDF of times, measured B, core B, and crustal B
-	status = exportCdf(outputFilename, satellite, EXPORT_VERSION_STRING, (double*)magVariables[0], bCore, bCrust, bMeas, nInputs);
+	status = exportCdf(outputFilename, satellite, EXPORT_VERSION_STRING, (double*)magVariables[0], bCore, bCrust, dbMeas, nInputs);
 	if (status != 0)
 	{
 		printf("Could not export fields.\n");
@@ -345,7 +422,7 @@ cleanup:
 	{
 		if (magVariables[i] != NULL) free(magVariables[i]);
 	}
-	if (bMeas != NULL) free(bMeas);
+	if (dbMeas != NULL) free(dbMeas);
 	if (bCore != NULL) free(bCore);
 	if (bCrust != NULL) free(bCrust);
 

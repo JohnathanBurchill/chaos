@@ -195,7 +195,7 @@ int getOutputFilename(const char satellite, long year, long month, long day, con
 }
 
 
-CDFstatus exportCdf(const char *cdfFilename, const char satellite, const char *exportVersion, double *times, double *bCore, double *bCrust, double *bMeas, size_t nVectors)
+CDFstatus exportCdf(const char *cdfFilename, const char satellite, const char *exportVersion, double *times, double *bCore, double *bCrust, double *dbMeas, size_t nVectors)
 {
 
     fprintf(stdout, "%sExporting CHAOS model data.\n",infoHeader);
@@ -215,7 +215,7 @@ CDFstatus exportCdf(const char *cdfFilename, const char satellite, const char *e
         createVarFrom1DVar(exportCdfId, "Timestamp", CDF_EPOCH, 0, nVectors-1, times);
         createVarFrom2DVar(exportCdfId, "B_core_nec", CDF_REAL8, 0, nVectors-1, bCore, 3);
         createVarFrom2DVar(exportCdfId, "B_crust_nec", CDF_REAL8, 0, nVectors-1, bCrust, 3);
-        createVarFrom2DVar(exportCdfId, "B_meas_nec", CDF_REAL8, 0, nVectors-1, bMeas, 3);
+        createVarFrom2DVar(exportCdfId, "dB_nec", CDF_REAL8, 0, nVectors-1, dbMeas, 3);
 
         // addAttributes(exportCdfId, SOFTWARE_VERSION_STRING, satellite, exportVersion, minTime, maxTime);
 
