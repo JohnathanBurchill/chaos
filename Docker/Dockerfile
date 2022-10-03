@@ -1,4 +1,4 @@
-# TII Cross-Track Ion Drift Processor: Docker/Dockerfile
+# CHAOS: Docker/Dockerfile
 
 # Copyright (C) 2022  Johnathan K Burchill
 
@@ -16,6 +16,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # adapted from TII Ion Drift Processor
+
 FROM ubuntu
 RUN apt -y update
 RUN apt -y upgrade

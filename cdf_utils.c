@@ -1,4 +1,26 @@
 
+/*
+
+    CHAOS: cdf_utils.c
+
+    Copyright (C) 2022  Johnathan K Burchill
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+// Adapted from SLIDEM Processor
+
 #include "cdf_utils.h"
 #include "chaos_settings.h"
 #include "cdf_vars.h"
@@ -254,12 +276,12 @@ void exportMetaInfo(const char *outputFilename, const char *magFilename, const c
     fprintf(metaInfoFile, "Input:%s\n", chaosCoreFilename + strlen(chaosCoreFilename)-18);
     fprintf(metaInfoFile, "Input:%s\n", chaosStaticFilename + strlen(chaosStaticFilename)-20);
 
-    char start[20] = {0};
+    char start[200] = {0};
     struct tm * tstart = gmtime(&startTime);
     sprintf(start, "%4d-%02d-%02dT%02d:%02d:%02d", tstart->tm_year+1900, tstart->tm_mon+1, tstart->tm_mday, tstart->tm_hour, tstart->tm_min, tstart->tm_sec);
     fprintf(metaInfoFile, "ProcessStart:%s\n", start);
     
-    char stop[20] = {0};
+    char stop[200] = {0};
     struct tm * tstop = gmtime(&stopTime);
     sprintf(stop, "%4d-%02d-%02dT%02d:%02d:%02d", tstop->tm_year+1900, tstop->tm_mon+1, tstop->tm_mday, tstop->tm_hour, tstop->tm_min, tstop->tm_sec);
     fprintf(metaInfoFile, "ProcessStop:%s\n", stop);

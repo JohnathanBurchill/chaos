@@ -1,3 +1,25 @@
+/*
+
+    CHAOS: chaos.c
+
+    Copyright (C) 2022  Johnathan K Burchill
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+// Adapted from SLIDEM Processor
+
 #include "cdf_utils.h"
 #include "chaos_settings.h"
 
@@ -571,20 +593,21 @@ int loadModel(const char *filename, int *minimumN, int *maximumN, int *numberOfT
 	}
 
 	int il, im;
+	int assignedItems = 0;
 	for (int i = 0; i < nTimes; i++)
 	{
-		fscanf(f, "%lf", *times + i);
+		assignedItems = fscanf(f, "%lf", *times + i);
 	}
 	size_t gRead = 0;
 	size_t hRead = 0;
 	for (int i = minN * (minN + 2); i <= maxN * (maxN+2); i++)
 	{
-		fscanf(f, "%d %d", &il, &im);
+		assignedItems = fscanf(f, "%d %d", &il, &im);
 		if (im >= 0)
 		{
 			for (int i = 0; i < nTimes; i++)
 			{
-				fscanf(f, "%lf", *gTimeSeries + gRead);
+				assignedItems = fscanf(f, "%lf", *gTimeSeries + gRead);
 				gRead++;
 			}
 		}
@@ -592,7 +615,7 @@ int loadModel(const char *filename, int *minimumN, int *maximumN, int *numberOfT
 		{
 			for (int i = 0; i < nTimes; i++)
 			{
-				fscanf(f, "%lf", *hTimeSeries + hRead);
+				assignedItems = fscanf(f, "%lf", *hTimeSeries + hRead);
 				hRead++;
 			}
 		}

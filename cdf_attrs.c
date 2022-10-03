@@ -1,3 +1,25 @@
+/*
+
+    CHAOS: cdf_attrs.c
+
+    Copyright (C) 2022  Johnathan K Burchill
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+// Adapted from SLIDEM Processor
+
 #include "cdf_attrs.h"
 #include "cdf_utils.h"
 #include "chaos_settings.h"
@@ -276,22 +298,6 @@ void addAttributes(CDFid id, const char *softwareVersion, const char satellite, 
     CDFcreateAttr(id, "FORMAT", VARIABLE_SCOPE, &attrNum);
     CDFcreateAttr(id, "TIME_BASE", VARIABLE_SCOPE, &attrNum);
 
-    // const varAttr variableAttrs[5] = {
-    //     {"Timestamp", "CDF_EPOCH", "*", "UT", minTime, maxTime, "%f"},
-    //     {"V_i_raw", "CDF_REAL8", "m/s", "Ion along-track drift without high-latitude detrending.", -10000., 10000., "%7.1f"},
-    //     {"N_i", "CDF_REAL8", "cm^-3", "Ion density.", FLAGS_MINIMUM_NI/1e6, FLAGS_MAXIMUM_NI/1e6, "%5.2g"},
-    //     {"N_i_err", "CDF_REAL8", "cm^-3", "Ion density unertainty.", 0., 50000000.0, "%5.2gf"},
-    //     {"N_i_Flags", "CDF_UINT4", " ", "Ion density validity flag.", 0, 65535, "%d"},
-    //     {"A_fp", "CDF_REAL8", "m^2", "Modified-OML EFI faceplate area.", 0., 1., "%6.4f"},
-    //     {"R_p", "CDF_REAL8", "m", "Modified-OML Langmuir spherical probe radius.", 0., 0.01, "%6.4f"},
-    //     {"T_e", "CDF_REAL8", "K", "Electron temperature.", FLAGS_MINIMUM_LP_TE, FLAGS_MAXIMUM_LP_TE,"%7.1f"},
-    //     {"Phi_sc", "CDF_REAL8", "V", "Spacecraft floating potential with respect to plasma potential far from satellite.", FLAGS_MINIMUM_LP_SPACECRAFT_POTENTIAL, FLAGS_MAXIMUM_LP_SPACECRAFT_POTENTIAL, "%5.1f"}
-    // };
-
-    // for (uint8_t i = 0; i < NUM_EXPORT_VARIABLES; i++)
-    // {
-    //     addVariableAttributes(id, variableAttrs[i]);
-    // }
 
 }
 
