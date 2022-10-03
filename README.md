@@ -1,6 +1,6 @@
 # CHAOS C implementation
 
-This is an implementation of the CHAOS magnetic field model in C.
+This is an implementation of the CHAOS magnetic field model in C. Core and crustal model field values are interpolated every 2 s at times from either the 1 Hz or 50 Hz Swarm MAGx dataset, and residual field vectors are calculated. Results are stored in a NASA CDF file.
 
 Copyright (C) 2022   Johnathan K Burchill
 
