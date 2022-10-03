@@ -359,20 +359,6 @@ int main (int argc, char **argv)
 
 			}
 			lastIndex = t;
-			// printf("t=%ld\n", t);
-			// With magnetic potential
-			// printf("magneticPotential(time=%.1lf, r=%6.1lf, colatitude=%5.1lf, longitude=%5.1lf) = %.1lf, br = %.1lf, btheta = %.1lf nT\n", time, r, theta/degrees, phi/degrees, magneticPotential, br, btheta);
-			// Field vectors only
-	//		printf("time=%.1lf, r=%6.1lf, latitude=%5.1lf, longitude=%6.1lf: (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", inputTime, r, 90.0 - theta/degrees, phi/degrees, -btheta, bphi, -br);
-
-			// printf("time=%.1lf: model/measured=(%8.1lf/%8.1lf, %8.1lf/%8.1lf, %8.1lf/%8.1lf) nT (NEC)\n", inputTime, -btheta, bn, bphi, be, -br, bc);
-			// Delta-B (core removed)
-			// printf("time=%.1lf: DeltaB = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", inputTime, bn - bcn, be - bce, bc - bcc);
-			// Delta-B (core and crust removed)
-			// printf("time=%.1lf: DeltaB = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", inputTime, bn - bcn - bcrn, be - bce - bcre, bc - bcc - bcrc);
-			// B crustal
-			// printf("time=%.1lf: Crustal B = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", inputTime, bcrn, bcre, bcrc);
-			// Max crustal magnitudes
 
 		}
 
@@ -410,8 +396,6 @@ int main (int argc, char **argv)
 		printf("%sInterrupted (SIGINT).\n", infoHeader);
 		goto cleanup;
 	}
-
-	// printf("Max Crustal B magnitudes = (%8.1lf, %8.1lf, %8.1lf) nT (NEC)\n", maxBcrn, maxBcre, maxBcrc);
 
 	// Export CDF of times, measured B, core B, and crustal B
 	status = exportCdf(outputFilename, satellite, EXPORT_VERSION_STRING, (double*)magVariables[0], bCore, bCrust, dbMeas, nInputs);
