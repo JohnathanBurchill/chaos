@@ -87,7 +87,7 @@ int main (int argc, char **argv)
 
 	int status = 0;
 
-	printf("Hi\n");
+	printf("Hi. This is CHAOS.\n");
 
 	double degrees = M_PI / 180.0;
 	double a = 6371.2;
@@ -216,7 +216,6 @@ int main (int argc, char **argv)
 		printf("Could not calculate fractional year.\n");
 		goto cleanup;
 	}
-	printf("Factional year: %.4lf\n", fractionalYear);
 	size_t coefficientTimeIndex = nTimes - 1;
 	size_t coefficientTimeIndexPlus1 = 0;
 	double timeFraction = 0.0;
@@ -238,7 +237,6 @@ int main (int argc, char **argv)
 		deltaTime = times[coefficientTimeIndexPlus1] - times[coefficientTimeIndex];
 	}
 	timeFraction = (fractionalYear - times[coefficientTimeIndex]) / deltaTime;
-	printf ("maxN: %d\n", maxN);
 	for (int i = (minN-1)*((minN-1) + 2); i < maxN * (maxN + 2); i++)
 	{
 		gnmNow[i] = gnm[i*nTimes + coefficientTimeIndex] + timeFraction * (gnm[i*nTimes + coefficientTimeIndexPlus1] - gnm[i*nTimes + coefficientTimeIndex]);

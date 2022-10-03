@@ -90,6 +90,8 @@ void loadCdf(const char *cdfFile, char *variables[], int nVariables, uint8_t **d
     }
     
 
+    void *newMem = NULL;
+
     for (uint8_t i = 0; i < nVariables && keep_running == 1; i++)
     {
         varNum = CDFgetVarNum(cdfId, variables[i]);
@@ -110,7 +112,13 @@ void loadCdf(const char *cdfFile, char *variables[], int nVariables, uint8_t **d
             numValues *= dimSizes[j];
         }
         numBytesToAdd = numValues * numRecs * numVarBytes;
-        dataBuffers[i] = (uint8_t*) realloc(dataBuffers[i], (size_t) numBytesToAdd);
+        newMem = realloc(dataBuffers[i], (size_t) numBytesToAdd);
+        if (newMem == NULL)
+        {
+            printf("Memory issue while realloc'ing input variables.\n");
+            exit(EXIT_FAILURE);
+        }
+        dataBuffers[i] = (uint8_t*) newMem;
         memcpy(dataBuffers[i], data, numBytesToAdd);
         CDFdataFree(data);
     }
