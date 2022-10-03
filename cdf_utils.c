@@ -199,7 +199,7 @@ int getInputFilename(const char satelliteLetter, long year, long month, long day
 
 }
 
-int getOutputFilename(const char satellite, long year, long month, long day, const char *exportDir, double *beginTime, double *endTime, char *cdfFileName)
+int getOutputFilename(const char satellite, long year, long month, long day, const char *exportDir, double *beginTime, double *endTime, char *cdfFileName, char *magDataset)
 {
 
     if (satellite != 'A' && satellite != 'B' && satellite != 'C')
@@ -210,7 +210,7 @@ int getOutputFilename(const char satellite, long year, long month, long day, con
     *beginTime = computeEPOCH(year, month, day, 0, 0, 0, 0);
     *endTime = computeEPOCH(year, month, day, 23, 59, 59, 999);
 
-    sprintf(cdfFileName, "%s/SW_%s_MAG%c%s_2__%04d%02d%02dT000000_%04d%02d%02dT235959_%s", exportDir, CHAOS_PRODUCT_TYPE, satellite, CHAOS_PRODUCT_CODE, (int)year, (int)month, (int)day, (int)year, (int)month, (int)day, EXPORT_VERSION_STRING);
+    sprintf(cdfFileName, "%s/SW_%s_MAG%cC7%c_2__%04d%02d%02dT000000_%04d%02d%02dT235959_%s", exportDir, CHAOS_PRODUCT_TYPE, satellite, magDataset[0], (int)year, (int)month, (int)day, (int)year, (int)month, (int)day, EXPORT_VERSION_STRING);
 
     return 0;
 

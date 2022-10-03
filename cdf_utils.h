@@ -40,7 +40,7 @@ void closeCdf(CDFid id);
 
 int getInputFilename(const char satelliteLetter, long year, long month, long day, const char *path, const char *dataset, char *filename);
 
-int getOutputFilename(const char satellite, long year, long month, long day, const char *exportDir, double *beginTime, double *endTime, char *cdfFileName);
+int getOutputFilename(const char satellite, long year, long month, long day, const char *exportDir, double *beginTime, double *endTime, char *cdfFileName, char *magDataset);
 
 CDFstatus exportCdf(const char *cdfFilename, const char satellite, const char *exportVersion, double *times, double *bCore, double *bCrust, double *dbMeas, size_t nVectors);
 

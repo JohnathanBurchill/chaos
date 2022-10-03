@@ -37,11 +37,6 @@
 
 #define NMAGVARS 5
 
-#define MAG_INPUT_DATASET "LR_1B"
-#define INTERPOLATION_SKIP 4 // 4 s
-//#define MAG_INPUT_DATASET "HR_1B"
-//#define INTERPOLATION_SKIP 200 // 4 s
-
 // declare functions
 
 // Handle Ctrl-C
@@ -69,6 +64,26 @@ int main (int argc, char **argv)
 	signal(SIGINT, sig_handler);
 
 	time_t processingStartTime = time(NULL);
+
+
+	for (int i = 0; i < argc; i++)
+	{
+		if (strcmp(argv[i], "--about") == 0)
+		{
+			// Adapted from TII Ion Drift Processor
+            fprintf(stdout, "chaos - CHAOS magnetic field model and residual field processor, version %s.\n", SOFTWARE_VERSION);
+            fprintf(stdout, "Copyright (C) 2022  Johnathan K Burchill\n");
+            fprintf(stdout, "This program comes with ABSOLUTELY NO WARRANTY.\n");
+            fprintf(stdout, "This is free software, and you are welcome to redistribute it\n");
+            fprintf(stdout, "under the terms of the GNU General Public License.\n");
+			exit(EXIT_SUCCESS);
+		}
+		else if (strcmp(argv[i], "--help") == 0)
+		{
+			usage(argv[0]);
+			exit(EXIT_SUCCESS);
+		}
+	}
 
 	int status = 0;
 
@@ -131,29 +146,41 @@ int main (int argc, char **argv)
 
 	char outputFilename[FILENAME_MAX];
 
-	if (argc != 5)
+	if (argc != 6)
 	{
 		usage(argv[0]);
 		goto cleanup;
 	}
 	char *satDate = argv[1];
-	char *coeffDir = argv[2];
-	char *magDir = argv[3];
-	char *outputDir = argv[4];
+	char *magDataset = argv[2];
+	char *coeffDir = argv[3];
+	char *magDir = argv[4];
+	char *outputDir = argv[5];
+
+	if (strcmp(magDataset, "LR_1B") != 0 && strcmp(magDataset, "HR_1B") != 0)
+	{
+		printf("Expected 'LR_1B' or 'HR_1B' for magDataset.\n");
+		usage(argv[0]);
+		goto cleanup;
+	}
+
+	int interpolationSkip = 4;
+	if (strcmp(magDataset, "HR_1B") == 0)
+		interpolationSkip = 200;
 
 	char satellite = satDate[0];
 	long year, month, day;
     int valuesRead = sscanf(satDate+1, "%4ld%2ld%2ld", &year, &month, &day);
     if (valuesRead != 3)
     {
-        fprintf(stdout, "CHAOS called as:\n \"%s %s %s %s %s\"\n Unable to parse date \"\". Exiting.\n", argv[0], argv[1], argv[2], argv[3], argv[4]);
+        fprintf(stdout, "CHAOS called as:\n \"%s %s %s %s %s %s\"\n Unable to parse date \"\". Exiting.\n", argv[0], argv[1], argv[2], argv[3], argv[4], argv[5]);
 		goto cleanup;
     }
 	sprintf(infoHeader, "CHAOS %s: ", satDate);
 
 	double beginTime;
 	double endTime;
-	status = getOutputFilename(satellite, year, month, day, outputDir, &beginTime, &endTime, outputFilename);
+	status = getOutputFilename(satellite, year, month, day, outputDir, &beginTime, &endTime, outputFilename, magDataset);
 	if (status != 0)
 	{
 		printf("Could not get output filename.\n");
@@ -252,7 +279,7 @@ int main (int argc, char **argv)
 	};
 	// Magnetic field input data
 	// LR_1B product for development, much faster load time than HR_1B
-	if (getInputFilename(satellite, year, month, day, magDir, MAG_INPUT_DATASET, magFilename))
+	if (getInputFilename(satellite, year, month, day, magDir, magDataset, magFilename))
 	// if (getInputFilename(satellite, year, month, day, magDir, "HR_1B", magFilename))
     {
         fprintf(stdout, "%sMAG HR_1B input file is not available. Exiting.\n", infoHeader);
@@ -311,7 +338,7 @@ int main (int argc, char **argv)
 
 		lastIndex = 0;
 
-		for (size_t t = INTERPOLATION_SKIP; t < nInputs && keep_running == 1; t += INTERPOLATION_SKIP)
+		for (size_t t = interpolationSkip; t < nInputs && keep_running == 1; t += interpolationSkip)
 		// for (size_t t = 0; t < nInputs && keep_running == 1; t+=1*60*5)
 		// for (size_t t = 0; t < nInputs && keep_running == 1; t+=50*60*5)
 		{
@@ -338,19 +365,19 @@ int main (int argc, char **argv)
 			dbMeas[t*3+2] = ((double*)magVariables[4])[t*3 + 2] - bCore[t*3 + 2] - bCrust[t*3 + 2];
 
 			// Linearly interpolate at skipped epochs
-			deltaT = ((double*)magVariables[0])[t] - ((double*)magVariables[0])[t - INTERPOLATION_SKIP];
+			deltaT = ((double*)magVariables[0])[t] - ((double*)magVariables[0])[t - interpolationSkip];
 			if (deltaT <= 0.)
 				deltaT = 1.0; // arbitrary
-			for (size_t i = t-INTERPOLATION_SKIP + 1; i < t; i++)
+			for (size_t i = t-interpolationSkip + 1; i < t; i++)
 			{
-				interpolationFraction = (((double*)magVariables[0])[i] - ((double*)magVariables[0])[t-INTERPOLATION_SKIP]) / deltaT;
-				bCore[i*3] = bCore[(t-INTERPOLATION_SKIP)*3] + interpolationFraction * (bCore[t*3] - bCore[(t-INTERPOLATION_SKIP)*3]);
-				bCore[i*3+1] = bCore[(t-INTERPOLATION_SKIP)*3+1] + interpolationFraction * (bCore[t*3+1] - bCore[(t-INTERPOLATION_SKIP)*3+1]);
-				bCore[i*3+2] = bCore[(t-INTERPOLATION_SKIP)*3+2] + interpolationFraction * (bCore[t*3+2] - bCore[(t-INTERPOLATION_SKIP)*3+2]);
+				interpolationFraction = (((double*)magVariables[0])[i] - ((double*)magVariables[0])[t-interpolationSkip]) / deltaT;
+				bCore[i*3] = bCore[(t-interpolationSkip)*3] + interpolationFraction * (bCore[t*3] - bCore[(t-interpolationSkip)*3]);
+				bCore[i*3+1] = bCore[(t-interpolationSkip)*3+1] + interpolationFraction * (bCore[t*3+1] - bCore[(t-interpolationSkip)*3+1]);
+				bCore[i*3+2] = bCore[(t-interpolationSkip)*3+2] + interpolationFraction * (bCore[t*3+2] - bCore[(t-interpolationSkip)*3+2]);
 
-				bCrust[i*3] = bCrust[(t-INTERPOLATION_SKIP)*3] + interpolationFraction * (bCrust[t*3] - bCrust[(t-INTERPOLATION_SKIP)*3]);
-				bCrust[i*3+1] = bCrust[(t-INTERPOLATION_SKIP)*3+1] + interpolationFraction * (bCrust[t*3+1] - bCrust[(t-INTERPOLATION_SKIP)*3+1]);
-				bCrust[i*3+2] = bCrust[(t-INTERPOLATION_SKIP)*3+2] + interpolationFraction * (bCrust[t*3+2] - bCrust[(t-INTERPOLATION_SKIP)*3+2]);
+				bCrust[i*3] = bCrust[(t-interpolationSkip)*3] + interpolationFraction * (bCrust[t*3] - bCrust[(t-interpolationSkip)*3]);
+				bCrust[i*3+1] = bCrust[(t-interpolationSkip)*3+1] + interpolationFraction * (bCrust[t*3+1] - bCrust[(t-interpolationSkip)*3+1]);
+				bCrust[i*3+2] = bCrust[(t-interpolationSkip)*3+2] + interpolationFraction * (bCrust[t*3+2] - bCrust[(t-interpolationSkip)*3+2]);
 
 				// Copy skipped measured fields
 				dbMeas[i*3]   = ((double*)magVariables[4])[i*3 + 0] - bCore[i*3 + 0] - bCrust[i*3 + 0];
@@ -437,12 +464,17 @@ cleanup:
 
 void usage(const char* name)
 {
-	printf("Usage: %s XYYYYMMDD chaosModelCoefficientsDir magCdfDir outputDir\n", name);
+	printf("Usage: %s XYYYYMMDD magDataset chaosModelCoefficientsDir magCdfDir outputDir\n", name);
 	printf(" X: satellite letter A, B, or C\n");
 	printf(" YYYYMMDD: year, month, day\n");
+	printf(" magDataset:\n");
+	printf("\tLR_1B: Input files are  1 Hz data.\n");
+	printf("\tHR_1B: Input files are 50 Hz data.\n");
 	printf(" chaosModelCoefficientsDir: directory containing SHC files\n");
 	printf(" magCdfDir: directory containing MAG_HR CDFs\n");
 	printf(" outputDir: directory to store magnetic field vectors\n");
+
+	return;
 }
 
 // Calculates day of year: 1 January is day 1.
@@ -604,25 +636,6 @@ int loadModel(const char *filename, int *minimumN, int *maximumN, int *numberOfT
 			}
 		}
 	}
-	// for (int i = 0; i < nTimes; i++)
-	// {
-	// 	printf("t = %lf\n", times[i]);
-	// }
-	// gRead = 0;
-	// hRead = 0;
-	// for (int l = minN; l <= maxN; l++)
-	// {
-	// 	for (int m = 0; m <= l; m++)
-	// 	{
-	// 		printf("g_%d_%d = %lf\n", l, m, gnm[gRead*nTimes + 0]);
-	// 		gRead++;
-	// 		if (m > 0)
-	// 		{
-	// 			printf("h_%d_%d = %lf\n", l, m, hnm[hRead*nTimes + 0]);
-	// 			hRead++;
-	// 		}
-	// 	}
-	// }
 
 cleanup:	
 	if (f != NULL) fclose(f);
