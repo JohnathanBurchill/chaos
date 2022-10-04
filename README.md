@@ -1,10 +1,12 @@
 # CHAOS C implementation
 
-This is an implementation of the CHAOS-7 core and static magnetic field models in C, for calculating external magnetic field residuals primarily for investigations of auroral and ionospheric electrodynamics.
+This is an implementation of the CHAOS-7 core and static magnetic field models in C for calculating external magnetic field residuals primarily for investigations of auroral and ionospheric electrodynamics.
 
 The [CHAOS-7 series of magnetic field models](http://www.spacecenter.dk/files/magnetic-models/CHAOS-7/) are developed and maintained by [DTU Space](https://www.space.dtu.dk/english/research/scientific_data_and_models/magnetic_field_models).
 
-This implementation trades a little bit of accuracy for a lot of speed. Field values are linearly interpolated from control points every 4 s from either the 1 Hz or 50 Hz Swarm MAGx dataset, and residual field vectors are calculated. Results are stored in a NASA CDF file. On a 2022 desktop running GNU/Linux, a daily 50 Hz MAG file takes about 25 s using a single process. This does not include the time it takes to get the unarchived CDF file onto the local hard drive from the ESA server.
+The implementation trades a little bit of accuracy for a lot of speed. Field values are linearly interpolated from control points every 4 s from either the 1 Hz or 50 Hz Swarm MAGx dataset, and residual field vectors are calculated. Results are stored in a NASA CDF file. On a 2022 desktop running GNU/Linux, a daily 50 Hz MAG file takes about 25 s using a single process. This does not include the time it takes to get the unarchived CDF file onto the local hard drive from the ESA server.
+
+Dependencies: [GNU/Linux](https://www.getgnulinux.org/en/linux), [CMake](https://cmake.org), the [GNU Compiler Collection](https://gcc.gnu.org), the [GNU Scientifc Library](https://www.gnu.org/software/gsl/), and the [NASA CDF library](https://cdf.gsfc.nasa.gov).
 
 Copyright (C) 2022   Johnathan K Burchill
 
