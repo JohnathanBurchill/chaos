@@ -30,6 +30,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <ctype.h>
+#include <libgen.h>
 
 CDFstatus addgEntry(CDFid id, long attrNum, long entryNum, const char *entry)
 {
@@ -234,14 +235,14 @@ void addAttributes(CDFid id, const char *cdfFilename, const char *magFilename, c
     CDFcreateAttr(id, "MODS", GLOBAL_SCOPE, &attrNum);
     addgEntry(id, attrNum, 0, "Initial release.");
     char fullFileName[FILENAME_MAX] = {0};
-    sprintf(fullFileName, "%s.cdf", cdfFilename + strlen(cdfFilename) - 59);
+    sprintf(fullFileName, "%s.cdf", basename((char *)cdfFilename));
     CDFcreateAttr(id, "File_Name", GLOBAL_SCOPE, &attrNum);
     addgEntry(id, attrNum, 0, fullFileName);
     CDFcreateAttr(id, "List_Of_Input_Files", GLOBAL_SCOPE, &attrNum);
     fLen = strlen(magFilename);
-        addgEntry(id, attrNum, 0, magFilename + fLen -70);
-        addgEntry(id, attrNum, 1, shcFile1);
-        addgEntry(id, attrNum, 2, shcFile2);
+        addgEntry(id, attrNum, 0, basename((char *)magFilename));
+        addgEntry(id, attrNum, 1, basename((char *)shcFile1));
+        addgEntry(id, attrNum, 2, basename((char *)shcFile2));
 
     CDFcreateAttr(id, "File_naming_convention", GLOBAL_SCOPE, &attrNum);
     sprintf(buf, "SW_%s_MAGxC7%c_2_", CHAOS_PRODUCT_TYPE, dataset[0]);
