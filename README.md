@@ -1,8 +1,10 @@
 # CHAOS C implementation
 
-This is an implementation of the CHAOS-7 core and static magnetic field models in C for calculating external magnetic field residuals primarily for investigations of auroral and ionospheric electrodynamics.
+This is an implementation of the CHAOS-7 core and static magnetic field models in C for calculating external magnetic field residuals from the [ESA Swarm mission](https://www.esa.int/Applications/Observing_the_Earth/FutureEO/Swarm), primarily for investigations of auroral and ionospheric electrodynamics.
 
 The [CHAOS-7 series of magnetic field models](http://www.spacecenter.dk/files/magnetic-models/CHAOS-7/) are developed and maintained by [DTU Space](https://www.space.dtu.dk/english/research/scientific_data_and_models/magnetic_field_models).
+
+Swarm magnetic field measurements are available from the ESA Swarm Data Access portal at [1 Hz](https://swarm-diss.eo.esa.int/#swarm%2FLevel1b%2FLatest_baselines%2FMAGx_LR) and [50 Hz](https://swarm-diss.eo.esa.int/#swarm%2FLevel1b%2FLatest_baselines%2FMAGx_HR).
 
 The implementation trades a little bit of accuracy for a lot of speed. Field values are linearly interpolated from control points every 4 s from either the 1 Hz or 50 Hz Swarm MAGx dataset, and residual field vectors are calculated. Results are stored in a NASA CDF file. On a 2022 desktop running GNU/Linux, a daily 50 Hz MAG file takes about 25 s using a single process. This does not include the time it takes to get the unarchived CDF file onto the local hard drive from the ESA server.
 
