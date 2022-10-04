@@ -4,7 +4,7 @@ This is an implementation of the CHAOS magnetic field model in C. Core and crust
 
 Copyright (C) 2022   Johnathan K Burchill
 
-Developed at the University of Calgary (2020-2022) with support of the Canadian Space Agency. 
+Developed at the University of Calgary (2022) with support of the Canadian Space Agency. 
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
