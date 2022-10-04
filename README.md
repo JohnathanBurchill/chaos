@@ -1,4 +1,4 @@
-# CHAOS C implementation
+# C CHAOS
 
 This is an implementation of the CHAOS-7 core and static magnetic field models in C for calculating external magnetic field residuals from the [ESA Swarm mission](https://www.esa.int/Applications/Observing_the_Earth/FutureEO/Swarm), primarily for investigations of auroral and ionospheric electrodynamics.
 
