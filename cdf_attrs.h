@@ -23,6 +23,8 @@
 #ifndef CDF_ATTRS_H
 #define CDF_ATTRS_H
 
+#include "shc.h"
+
 #include <cdf.h>
 
 
@@ -41,7 +43,7 @@ typedef struct varAttr {
 
 CDFstatus addVariableAttributes(CDFid id, varAttr attr);
 
-void addAttributes(CDFid id, const char *cdfFilename, const char *magFilename, const char *shcFile1, const char *shcFile2, const char *softwareVersion, const char satellite, const char *dataset, const char *version, double minTime, double maxTime);
+void addAttributes(CDFid id, const char *cdfFilename, const char *magFilename, ChaosCoefficients *coeffs, const char *softwareVersion, const char satellite, const char *dataset, const char *version, double minTime, double maxTime);
 
 
 #endif // CDF_ATTRS_H

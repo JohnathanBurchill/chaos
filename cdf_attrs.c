@@ -208,7 +208,7 @@ CDFstatus addVariableAttributes(CDFid id, varAttr attr)
     return status;
 }
 
-void addAttributes(CDFid id, const char *cdfFilename, const char *magFilename, const char *shcFile1, const char *shcFile2, const char *softwareVersion, const char satellite, const char *dataset, const char *version, double minTime, double maxTime)
+void addAttributes(CDFid id, const char *cdfFilename, const char *magFilename, ChaosCoefficients *coeffs, const char *softwareVersion, const char satellite, const char *dataset, const char *version, double minTime, double maxTime)
 {
     long attrNum = 0;
     char buf[1000] = {0};
@@ -241,8 +241,9 @@ void addAttributes(CDFid id, const char *cdfFilename, const char *magFilename, c
     CDFcreateAttr(id, "List_Of_Input_Files", GLOBAL_SCOPE, &attrNum);
     fLen = strlen(magFilename);
         addgEntry(id, attrNum, 0, basename((char *)magFilename));
-        addgEntry(id, attrNum, 1, basename((char *)shcFile1));
-        addgEntry(id, attrNum, 2, basename((char *)shcFile2));
+        addgEntry(id, attrNum, 1, basename((char *)coeffs->core.coeffFilename));
+        addgEntry(id, attrNum, 2, basename((char *)coeffs->coreExtrapolation.coeffFilename));
+        addgEntry(id, attrNum, 3, basename((char *)coeffs->crust.coeffFilename));
 
     CDFcreateAttr(id, "File_naming_convention", GLOBAL_SCOPE, &attrNum);
     sprintf(buf, "SW_%s_MAGxC7%c_2_", CHAOS_PRODUCT_TYPE, dataset[0]);
