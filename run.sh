@@ -19,5 +19,5 @@
 
 
 
-(cd build; make && cd .. && rm -f TestFiles/SW*CH7*.cdf && ./build/bin/chaos A20220309 shc TestFiles TestFiles)
+(cd build; make && cd .. && rm -f TestFiles/out/* && ./build/bin/chaos A20220309 shc/7.12 TestFiles TestFiles/out)
 
