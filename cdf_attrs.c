@@ -239,7 +239,7 @@ void addAttributes(CDFid id, const char *cdfFilename, const char *magFilename, c
     addgEntry(id, attrNum, 0, fullFileName);
     CDFcreateAttr(id, "List_Of_Input_Files", GLOBAL_SCOPE, &attrNum);
     fLen = strlen(magFilename);
-        addgEntry(id, attrNum, 0, magFilename + fLen - 59);
+        addgEntry(id, attrNum, 0, magFilename + fLen -70);
         addgEntry(id, attrNum, 1, shcFile1);
         addgEntry(id, attrNum, 2, shcFile2);
 
