@@ -207,49 +207,65 @@ CDFstatus addVariableAttributes(CDFid id, varAttr attr)
     return status;
 }
 
-void addAttributes(CDFid id, const char *softwareVersion, const char satellite, const char *version, double minTime, double maxTime)
+void addAttributes(CDFid id, const char *cdfFilename, const char *magFilename, const char *shcFile1, const char *shcFile2, const char *softwareVersion, const char satellite, const char *dataset, const char *version, double minTime, double maxTime)
 {
-    long attrNum;
-    char buf[1000];
+    long attrNum = 0;
+    char buf[1000] = {0};
+    size_t fLen = 0;
+
+    bool highRes = strcmp(dataset, "HR_1B") == 0;
 
     // Global attributes
-    CDFcreateAttr(id, "File_naming_convention", GLOBAL_SCOPE, &attrNum);
-    sprintf(buf, "SW_%s_EFIXIDM", CHAOS_PRODUCT_TYPE);
-    addgEntry(id, attrNum, 0, buf);
-    CDFcreateAttr(id, "Logical_file_id", GLOBAL_SCOPE, &attrNum);
-    sprintf(buf, "swarm%c_IDM_H0__v%s", tolower(satellite), version);
-    addgEntry(id, attrNum, 0, buf);
-    CDFcreateAttr(id, "Logical_source", GLOBAL_SCOPE, &attrNum);
-    sprintf(buf, "Swarm%c_IDM_H0", satellite);
-    addgEntry(id, attrNum, 0, buf);
-    CDFcreateAttr(id, "Logical_source_description", GLOBAL_SCOPE, &attrNum);
-    sprintf(buf, "Swarm %c Ion Drift, Density and Effective Mass High resolution data product", satellite);
-    addgEntry(id, attrNum, 0, buf);
+    CDFcreateAttr(id, "Project", GLOBAL_SCOPE, &attrNum);
+    addgEntry(id, attrNum, 0, "ESA Living Planet Programme");
     CDFcreateAttr(id, "Mission_group", GLOBAL_SCOPE, &attrNum);
     addgEntry(id, attrNum, 0, "Swarm");
-    CDFcreateAttr(id, "MODS", GLOBAL_SCOPE, &attrNum);
-    addgEntry(id, attrNum, 0, "Initial release.");
+    CDFcreateAttr(id, "TITLE", GLOBAL_SCOPE, &attrNum);
+    sprintf(buf, "Swarm %c MAG-CHAOS residual magnetic field product.", satellite);
+    addgEntry(id, attrNum, 0, buf);
     CDFcreateAttr(id, "PI_name", GLOBAL_SCOPE, &attrNum);
     addgEntry(id, attrNum, 0, "Johnathan Burchill");   
     CDFcreateAttr(id, "PI_affiliation", GLOBAL_SCOPE, &attrNum);
     addgEntry(id, attrNum, 0, "University of Calgary");
     CDFcreateAttr(id, "Acknowledgement", GLOBAL_SCOPE, &attrNum);
-    addgEntry(id, attrNum, 0, "ESA Swarm EFI IDM data are available from https://swarm-diss.eo.esa.int");
+    addgEntry(id, attrNum, 0, "ESA Swarm MAG-CHAOS residual magnetic field data are available upon request to University of Calgary");
+    CDFcreateAttr(id, "Software_version", GLOBAL_SCOPE, &attrNum);
+    addgEntry(id, attrNum, 0, softwareVersion);
+    CDFcreateAttr(id, "MODS", GLOBAL_SCOPE, &attrNum);
+    addgEntry(id, attrNum, 0, "Initial release.");
+    char fullFileName[FILENAME_MAX] = {0};
+    sprintf(fullFileName, "%s.cdf", cdfFilename + strlen(cdfFilename) - 59);
+    CDFcreateAttr(id, "File_Name", GLOBAL_SCOPE, &attrNum);
+    addgEntry(id, attrNum, 0, fullFileName);
+    CDFcreateAttr(id, "List_Of_Input_Files", GLOBAL_SCOPE, &attrNum);
+    fLen = strlen(magFilename);
+        addgEntry(id, attrNum, 0, magFilename + fLen - 59);
+        addgEntry(id, attrNum, 1, shcFile1);
+        addgEntry(id, attrNum, 2, shcFile2);
+
+    CDFcreateAttr(id, "File_naming_convention", GLOBAL_SCOPE, &attrNum);
+    sprintf(buf, "SW_%s_MAGxC7%c_2_", CHAOS_PRODUCT_TYPE, dataset[0]);
+    addgEntry(id, attrNum, 0, buf);
+    CDFcreateAttr(id, "Logical_source_description", GLOBAL_SCOPE, &attrNum);
+    sprintf(buf, "Swarm %c MAG-CHAOS magnetic field residual product", satellite);
+    addgEntry(id, attrNum, 0, buf);
     CDFcreateAttr(id, "Source_name", GLOBAL_SCOPE, &attrNum);
     sprintf(buf, "Swarm%c>Swarm %c", satellite, satellite);
     addgEntry(id, attrNum, 0, buf);
     CDFcreateAttr(id, "Data_type", GLOBAL_SCOPE, &attrNum);
-    addgEntry(id, attrNum, 0, "H0>High resolution data");
+    if (highRes)
+        addgEntry(id, attrNum, 0, "L0>High resolution data");
+    else
+        addgEntry(id, attrNum, 0, "L0>Low resolution data");
     CDFcreateAttr(id, "Data_version", GLOBAL_SCOPE, &attrNum);
     addgEntry(id, attrNum, 0, version);
     CDFcreateAttr(id, "Descriptor", GLOBAL_SCOPE, &attrNum);
-    addgEntry(id, attrNum, 0, "IDM>Swarm Ion Drift, Effective Mass and Revised Ion Density");
+    addgEntry(id, attrNum, 0, "MAG-CHAOS>Swarm Magnetic Field Residuals");
     CDFcreateAttr(id, "Discipline", GLOBAL_SCOPE, &attrNum);
     addgEntry(id, attrNum, 0, "Space Physics>Ionospheric Science");
     CDFcreateAttr(id, "Generated_by", GLOBAL_SCOPE, &attrNum);
     addgEntry(id, attrNum, 0, "University of Calgary");
     CDFcreateAttr(id, "Generation_date", GLOBAL_SCOPE, &attrNum);
-    // Get rid of trailing newline from creation date
     time_t created;
     time(&created);
     struct tm * dp = gmtime(&created);
@@ -257,33 +273,22 @@ void addAttributes(CDFid id, const char *softwareVersion, const char satellite, 
     sprintf(dateCreated, "UTC=%04d-%02d-%02dT%02d:%02d:%02d", dp->tm_year+1900, dp->tm_mon+1, dp->tm_mday, dp->tm_hour, dp->tm_min, dp->tm_sec);
     addgEntry(id, attrNum, 0, dateCreated);
     CDFcreateAttr(id, "LINK_TEXT", GLOBAL_SCOPE, &attrNum);
-    addgEntry(id, attrNum, 0, "2 Hz EFI IDM ion drift and effective mass data available at");
+    addgEntry(id, attrNum, 0, "Swarm MAG-CHAOS magnetic field resdidual are available upon request to");
     CDFcreateAttr(id, "LINK_TITLE", GLOBAL_SCOPE, &attrNum);
-    addgEntry(id, attrNum, 0, "ESA Swarm Data Access");
+    addgEntry(id, attrNum, 0, "University of Calgary Swarm EFI Team");
     CDFcreateAttr(id, "HTTP_LINK", GLOBAL_SCOPE, &attrNum);
-    addgEntry(id, attrNum, 0, "https://swarm-diss.eo.esa.int");
+    addgEntry(id, attrNum, 0, "mailto:jkburchi@ucalgary.ca");
     CDFcreateAttr(id, "Instrument_type", GLOBAL_SCOPE, &attrNum);
-    addgEntry(id, attrNum, 0, "Electric Fields (space)");
-    addgEntry(id, attrNum, 1, "Particles (space)");
+    addgEntry(id, attrNum, 0, "Magnetic Fields (space)");
     CDFcreateAttr(id, "Instrument_type", GLOBAL_SCOPE, &attrNum);
-    addgEntry(id, attrNum, 0, "Plasma and Solar Wind");
+    addgEntry(id, attrNum, 0, "Magnetic Field");
     CDFcreateAttr(id, "TEXT", GLOBAL_SCOPE, &attrNum);
-    addgEntry(id, attrNum, 0, "Swarm Langmuir Probe ion drift, effective mass, and revised ion density data.");
-    addgEntry(id, attrNum, 1, "Along-track component of ion drift is parallel to the satellite velocity vector.");
-
-    addgEntry(id, attrNum, 6, "Finlay et al.");
+    addgEntry(id, attrNum, 0, "Swarm Magnetic Field residuals with respect to CHAOS-7.");
     CDFcreateAttr(id, "Time_resolution", GLOBAL_SCOPE, &attrNum);
-    addgEntry(id, attrNum, 0, "0.5 seconds");
-    CDFcreateAttr(id, "TITLE", GLOBAL_SCOPE, &attrNum);
-    sprintf(buf, "Swarm %c IDM High resolution data.", satellite);
-    addgEntry(id, attrNum, 0, buf);
-    CDFcreateAttr(id, "Project", GLOBAL_SCOPE, &attrNum);
-    addgEntry(id, attrNum, 0, "ESA Living Planet Programme");
-    CDFcreateAttr(id, "Software_version", GLOBAL_SCOPE, &attrNum);
-    addgEntry(id, attrNum, 0, softwareVersion);
-    CDFcreateAttr(id, "spase_DatasetResourceID", GLOBAL_SCOPE, &attrNum);
-    sprintf(buf, "spase://ESA/Instrument/Swarm%c/IDM/0.5s", satellite);
-    addgEntry(id, attrNum, 0, buf);
+    if (highRes)
+        addgEntry(id, attrNum, 0, "0.02 s");
+    else
+        addgEntry(id, attrNum, 0, "1 s");
 
     CDFcreateAttr(id, "FIELDNAM", VARIABLE_SCOPE, &attrNum);
     CDFcreateAttr(id, "CATDESC", VARIABLE_SCOPE, &attrNum);
@@ -298,6 +303,20 @@ void addAttributes(CDFid id, const char *softwareVersion, const char satellite, 
     CDFcreateAttr(id, "FORMAT", VARIABLE_SCOPE, &attrNum);
     CDFcreateAttr(id, "TIME_BASE", VARIABLE_SCOPE, &attrNum);
 
+    const varAttr variableAttrs[] = {
+        {"Timestamp", "CDF_EPOCH", "*", " ", minTime, maxTime, "%f"},
+        {"Latitude", "CDF_REAL8", "degrees", "Geocentric latitude.", -90., 90., "%5.1f"},
+        {"Longitude", "CDF_REAL8", "degrees", "Geocentric longitude.", -180., 180., "%6.1f"},
+        {"Radius", "CDF_REAL8", "m", "Geocentric radius.", 6400000., 7400000., "%9.1f"},
+        {"B_core_nec", "CDF_REAL8", "nT", "CHAOS 7 core magnetic field (interpolated)", -70000., 70000., "%8.1f"},
+        {"B_crust_nec", "CDF_REAL8", "nT", "CHAOS 7 crustal magnetic field (interpolated)", -1000., 1000., "%8.2f"},
+        {"dB_nec", "CDF_REAL8", "nT", "Residual magnetic field from Swarm MAG with respect to CHAOS 7 core plus crustal field.", 5000., 5000., "%8.2f"}
+    };
+
+    for (uint8_t i = 0; i < NUMBER_OF_EXPORT_VARIABLES; i++)
+    {
+        addVariableAttributes(id, variableAttrs[i]);
+    }
 
 }
 

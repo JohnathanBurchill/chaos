@@ -24,6 +24,7 @@
 #include "cdf_utils.h"
 #include "chaos_settings.h"
 #include "cdf_vars.h"
+#include "cdf_attrs.h"
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -225,7 +226,7 @@ int getOutputFilename(const char satellite, long year, long month, long day, con
 }
 
 
-CDFstatus exportCdf(const char *cdfFilename, const char satellite, const char *exportVersion, double *times, double *bCore, double *bCrust, double *dbMeas, size_t nVectors)
+CDFstatus exportCdf(const char *cdfFilename, const char *magFilename, const char *shcFile1, const char *shcFile2, const char satellite, const char *dataset, const char *exportVersion, double *times, double *latitudes, double *longitudes, double *radii, double *bCore, double *bCrust, double *dbMeas, size_t nVectors)
 {
 
     fprintf(stdout, "%sExporting CHAOS model data.\n",infoHeader);
@@ -243,11 +244,14 @@ CDFstatus exportCdf(const char *cdfFilename, const char satellite, const char *e
 
         // export fpVariables
         createVarFrom1DVar(exportCdfId, "Timestamp", CDF_EPOCH, 0, nVectors-1, times);
+        createVarFrom1DVar(exportCdfId, "Latitude", CDF_REAL8, 0, nVectors-1, latitudes);
+        createVarFrom1DVar(exportCdfId, "Longitude", CDF_REAL8, 0, nVectors-1, longitudes);
+        createVarFrom1DVar(exportCdfId, "Radius", CDF_REAL8, 0, nVectors-1, radii);
         createVarFrom2DVar(exportCdfId, "B_core_nec", CDF_REAL8, 0, nVectors-1, bCore, 3);
         createVarFrom2DVar(exportCdfId, "B_crust_nec", CDF_REAL8, 0, nVectors-1, bCrust, 3);
         createVarFrom2DVar(exportCdfId, "dB_nec", CDF_REAL8, 0, nVectors-1, dbMeas, 3);
 
-        // addAttributes(exportCdfId, SOFTWARE_VERSION_STRING, satellite, exportVersion, minTime, maxTime);
+        addAttributes(exportCdfId, cdfFilename, magFilename, shcFile1, shcFile2, SOFTWARE_VERSION_STRING, satellite, dataset, SOFTWARE_VERSION, times[0], times[nVectors-1]);
 
         fprintf(stdout, "%sExported %ld records to %s.cdf\n", infoHeader, nVectors, cdfFilename);
         fflush(stdout);

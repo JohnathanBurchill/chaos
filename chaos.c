@@ -422,15 +422,14 @@ int main (int argc, char **argv)
 		goto cleanup;
 	}
 
-	// Export CDF of times, measured B, core B, and crustal B
-	status = exportCdf(outputFilename, satellite, EXPORT_VERSION_STRING, (double*)magVariables[0], bCore, bCrust, dbMeas, nInputs);
+	status = exportCdf(outputFilename, magFilename, coreFile, crustalFile, satellite, magDataset, EXPORT_VERSION_STRING, (double*)magVariables[0], (double*)magVariables[1], (double*)magVariables[2], (double*)magVariables[3], bCore, bCrust, dbMeas, nInputs);
 	if (status != 0)
 	{
 		printf("Could not export fields.\n");
 	}
 
-	time_t processingStopTime = time(NULL);
-	exportMetaInfo(outputFilename, magFilename, coreFile, crustalFile, nInputs, processingStartTime, processingStopTime);
+	// time_t processingStopTime = time(NULL);
+	// exportMetaInfo(outputFilename, magFilename, coreFile, crustalFile, nInputs, processingStartTime, processingStopTime);
 
 cleanup:
 	if (polynomials != NULL) free(polynomials);
