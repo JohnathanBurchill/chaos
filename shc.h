@@ -31,9 +31,11 @@ enum SHCError {
     SHC_DIRECTORY_READ,
     SHC_FILE_READ,
     SHC_FILE_CONTENTS,
+    SHC_NUMBER_OF_COEFFICIENTS,
     SHC_MEMORY,
     SHC_INTERPOLATION,
     SHC_FRACTIONAL_YEAR
+
 };
 
 typedef struct SHCCoefficients
@@ -44,7 +46,9 @@ typedef struct SHCCoefficients
     int minimumN;
     int maximumN;
     int numberOfTimes;
-    size_t numberOfTerms;
+    size_t numberOfTerms; // For GSL storage
+    size_t gCoeffs;
+    size_t hCoeffs;
     int bSplineOrder;
     int bSplineSteps;
     double *times;

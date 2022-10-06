@@ -37,10 +37,9 @@ int calculateField(double r, double theta, double phi, SHCCoefficients *coeffs, 
 {
 	double a = EARTH_RADIUS_KM;
 	double aoverr = a/r;
-	double magneticPotential = 0.0;
-	double magneticPotentialN = 0.0;
-	double magneticPotentialForThetaN = 0.0;
-	double magneticPotentialForPhiN = 0.0;
+	double magneticDerivRN = 0.0;
+	double magneticDerivThetaN = 0.0;
+	double magneticDerivPhiN = 0.0;
 	double br = 0.0;
 	double btheta = 0.0;
 	double bphi = 0.0;
@@ -56,46 +55,57 @@ int calculateField(double r, double theta, double phi, SHCCoefficients *coeffs, 
     int maxN = coeffs->maximumN;
     double *gnm = coeffs->gNow;
     double *hnm = coeffs->hNow;
+    double g = 0.0;
+    double h = 0.0;
+    size_t gCoeffs = 0;
+    size_t hCoeffs = 0;
 
-	aoverrpowers[0] = aoverr * aoverr; // (a/r)^n+1, n starting at 1
-	for (int i = 2; i <= maxN; i++)
+	aoverrpowers[0] = aoverr * aoverr * aoverr; // For potential derivatives, (a/r)^n+2, n starting at 1
+	for (int n = 1; n < maxN; n++)
 	{
-		aoverrpowers[i-1] = aoverrpowers[i-2] * aoverr;
+		aoverrpowers[n] = aoverrpowers[n-1] * aoverr;
 	}
 
-	status = gsl_sf_legendre_deriv_array(GSL_SF_LEGENDRE_SCHMIDT, maxN, cos(theta), polynomials, derivatives);
+    // Derivatives are d P_l^m(cos(theta)) / d theta 
+    // Exclude the Condon-Shortley phase factor
+	status = gsl_sf_legendre_deriv_alt_array_e(GSL_SF_LEGENDRE_SCHMIDT, maxN, cos(theta), 1, polynomials, derivatives);
 	if (status)
 	{
 		printf("GSL error: %s\n", gsl_strerror(status));
 		return CHAOS_MODEL_GSL;
 	}
 
+    size_t lInd = 0;
+
 	for (int n = minN; n <= maxN; n++)
 	{
-		magneticPotentialN = gnm[gRead] * polynomials[gsl_sf_legendre_array_index(n, 0)];
-		magneticPotentialForThetaN = gnm[gRead] * derivatives[gsl_sf_legendre_array_index(n, 0)] * (-sin(theta));
-		magneticPotentialForPhiN = 0.0;
-		gRead++;
+        g = gnm[gRead++];
+        lInd = gsl_sf_legendre_array_index(n, 0);
+		magneticDerivRN = g * polynomials[lInd];
+		magneticDerivThetaN = g * derivatives[lInd];
+		magneticDerivPhiN = 0.0;
 		for (int m = 1; m <= n; m++)
 		{
-			magneticPotentialN += (gnm[gRead] * cos((double)m*phi) + hnm[hRead] * sin((double)m*phi) ) * polynomials[gsl_sf_legendre_array_index(n, m)];
-			magneticPotentialForThetaN += (gnm[gRead] * cos((double)m*phi) + hnm[hRead] * sin((double)m*phi) ) * derivatives[gsl_sf_legendre_array_index(n, m)] * (-sin(theta));
-			magneticPotentialForPhiN += (gnm[gRead] * (-m*sin((double)m*phi)) + hnm[hRead] * m*cos((double)m*phi) ) * polynomials[gsl_sf_legendre_array_index(n, m)];
-			gRead++;
-			hRead++;
+            lInd = gsl_sf_legendre_array_index(n, m);
+            g = gnm[gRead++];
+            h = hnm[hRead++];
+			magneticDerivRN += (g * cos((double)m*phi) + h * sin((double)m*phi) ) * polynomials[lInd];
+			magneticDerivThetaN += (g * cos((double)m*phi) + h * sin((double)m*phi) ) * derivatives[lInd];
+			magneticDerivPhiN += (g * (-m*sin((double)m*phi)) + h * m*cos((double)m*phi) ) * polynomials[lInd];
 		}
-		magneticPotentialN *= aoverrpowers[n-1] * a;
-		magneticPotentialForThetaN *= aoverrpowers[n-1] * a;
-		magneticPotentialForPhiN *= aoverrpowers[n-1] * a;
+		magneticDerivRN *= aoverrpowers[n-1] * (-((double)n+1.0));
+		magneticDerivThetaN *= aoverrpowers[n-1];
+		magneticDerivPhiN *= aoverrpowers[n-1];
 
-		magneticPotential += magneticPotentialN;
 		// Br = -di potential by di r
-		br += -magneticPotentialN * (-(n+1.) / r);
+		br += -magneticDerivRN;
 		// Btheta = -di potential by di theta / r
-		btheta += -magneticPotentialForThetaN / r;
+		btheta += -magneticDerivThetaN;
 		// Bphi = -di potential by di phi / (r*sin(theta))
-		bphi += -magneticPotentialForPhiN / (r * sin(theta));
+		bphi += -magneticDerivPhiN;
 	}
+
+    bphi /= sin(theta);
 
 	*bn = -btheta;
 	*be = bphi;
@@ -164,7 +174,7 @@ int calculateResiduals(ChaosCoefficients *coeffs, int interpolationSkip, uint8_t
         deltaT = ((double*)magVariables[0])[t] - ((double*)magVariables[0])[t - interpolationSkip];
         if (deltaT <= 0.)
             deltaT = 1.0; // arbitrary
-        for (size_t i = t-interpolationSkip + 1; i < t; i++)
+        for (ssize_t i = t-interpolationSkip + 1; i < t; i++)
         {
             interpolationFraction = (((double*)magVariables[0])[i] - ((double*)magVariables[0])[t-interpolationSkip]) / deltaT;
             bCore[i*3] = bCore[(t-interpolationSkip)*3] + interpolationFraction * (bCore[t*3] - bCore[(t-interpolationSkip)*3]);
@@ -185,7 +195,7 @@ int calculateResiduals(ChaosCoefficients *coeffs, int interpolationSkip, uint8_t
 
     }
     // Calculate actual field for remaining inputs (up to INTEGRATION_SKIP-1 of them)
-    for (size_t t = lastIndex+1; t < nInputs && keep_running == 1; t ++)
+    for (size_t t = lastIndex+1; t < nInputs && keep_running == 1; t++)
     {
         inputTime = ((double*)magVariables[0])[t];
         theta = (90.0 - ((double*)magVariables[1])[t]) * degrees;
