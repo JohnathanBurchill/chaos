@@ -54,6 +54,62 @@ void usage(const char *name);
 
 char infoHeader[50];
 
+enum CHAOS_STATUS
+{
+    CHAOS_STATUS_OK = 0,
+    CHAOS_TIME_STRING = 1
+};
+
+int secondsFromTimeString(char *timeString, double *timeInSeconds)
+{
+    size_t len = strlen(timeString);
+    if (len < 6)
+        return CHAOS_TIME_STRING;
+
+    if (timeString[0] == '-')
+        return CHAOS_TIME_STRING;
+
+    char *newTime = strdup(timeString);
+
+    int pos = 4;
+    char *lastConvertedCharacter = 0;
+    double seconds = strtod(newTime + pos, &lastConvertedCharacter);
+    if (lastConvertedCharacter != newTime + len)
+    {
+        free(newTime);
+        return CHAOS_TIME_STRING;
+    }
+
+    newTime[pos] = 0;
+    pos = 2;
+
+    long minutes = strtol(newTime + pos, &lastConvertedCharacter, 10);
+    if (lastConvertedCharacter != newTime + 4)
+    {
+        free(newTime);
+        return CHAOS_TIME_STRING;
+    }
+    seconds += (double)minutes * 60.0;
+
+    newTime[pos] = 0;
+    pos = 0;
+
+    long hours = strtol(newTime + pos, &lastConvertedCharacter, 10);
+    if (lastConvertedCharacter != newTime + 2)
+    {
+        free(newTime);
+        return CHAOS_TIME_STRING;
+    }
+    seconds += (double)hours * 3600.0;
+
+    if (timeInSeconds != NULL)
+        *timeInSeconds = seconds;
+
+    free(newTime);
+
+    return CHAOS_STATUS_OK;
+}
+
 int main (int argc, char **argv)
 {
 
@@ -66,8 +122,6 @@ int main (int argc, char **argv)
 
 	char magFilename[FILENAME_MAX];
 	char outputFilename[FILENAME_MAX];
-	double beginTime = 0.0;
-	double endTime = 0.0;
 
 	ChaosCoefficients coeffs = {0};
 
@@ -83,6 +137,14 @@ int main (int argc, char **argv)
 	{
 		magVariables[i] = NULL;
 	}
+
+    int optionsCount = 0;
+
+    double firstTime = 0.0;
+    double lastTime = 86400.0;
+
+    char firstTimeString[] = "000000";
+    char lastTimeString[] = "235959";
 
 	for (int i = 0; i < argc; i++)
 	{
@@ -101,9 +163,51 @@ int main (int argc, char **argv)
 			usage(argv[0]);
 			exit(EXIT_SUCCESS);
 		}
+        else if (strncmp(argv[i], "--first-time=", 13) == 0)
+        {
+            if (secondsFromTimeString(argv[i] + 13, &firstTime) != CHAOS_STATUS_OK)
+            {
+                fprintf(stderr, "Expected a valid time format for %s.\n", argv[i]);
+                exit(EXIT_FAILURE);
+            }
+            snprintf(firstTimeString, 7, "%s", argv[i] + 13);
+            optionsCount++;
+        }
+        else if (strncmp(argv[i], "--last-time=", 12) == 0)
+        {
+            if (secondsFromTimeString(argv[i] + 12, &lastTime) != CHAOS_STATUS_OK)
+            {
+                fprintf(stderr, "Expected a valid time format for %s.\n", argv[i]);
+                exit(EXIT_FAILURE);
+            }
+            snprintf(lastTimeString, 7, "%s", argv[i] + 12);
+            optionsCount++;
+        }
+        else if (strncmp(argv[i], "--", 2) == 0)
+        {
+            fprintf(stderr, "Unknown option %s\n", argv[i]);
+            exit(EXIT_FAILURE);
+        }
 	}
 
-	if (argc != 6)
+    if (lastTime < firstTime)
+    {
+        fprintf(stderr, "Time travel is not permitted. Try --last-time >= --first-time.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (firstTime < 0.0 || lastTime > 86400.0)
+    {
+        fprintf(stderr, "Requested time range is beyond file time range.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Processing from %s to %s\n", firstTimeString, lastTimeString);
+    // Keep ESA filename time format -> 240000 is just 235959.
+    if (strcmp(lastTimeString, "240000") == 0)
+        snprintf(lastTimeString, 7, "%s", "235959");
+
+	if ((argc - optionsCount) != 6)
 	{
 		usage(argv[0]);
 		exit(EXIT_FAILURE);
@@ -132,12 +236,13 @@ int main (int argc, char **argv)
     }
 	sprintf(infoHeader, "CHAOS %s: ", satDate);
 
-	status = getOutputFilename(satellite, year, month, day, outputDir, &beginTime, &endTime, outputFilename, magDataset);
+	status = getOutputFilename(satellite, year, month, day, firstTimeString, lastTimeString, outputDir, outputFilename, magDataset);
 	if (status != 0)
 	{
 		fprintf(stderr, "Could not get output filename.\n");
 		exit(EXIT_FAILURE);
 	}
+
 	char fullOutputFilename[FILENAME_MAX] = {0};
 	status = snprintf(fullOutputFilename, FILENAME_MAX-4, "%s.cdf", outputFilename);
 	if (status < 0)
@@ -174,13 +279,6 @@ int main (int argc, char **argv)
 		goto cleanup;
 	}
 
-	char *magVariableNames[NMAGVARS] = {
-		"Timestamp",
-		"Latitude",
-		"Longitude",
-		"Radius",
-		"B_NEC"
-	};
 	// Magnetic field input data
 	// LR_1B product for development, much faster load time than HR_1B
 	if (getInputFilename(satellite, year, month, day, magDir, magDataset, magFilename))
@@ -189,8 +287,21 @@ int main (int argc, char **argv)
         fprintf(stdout, "%sMAG input file is not available. Exiting.\n", infoHeader);
         exit(1);
     }
+
+	char *magVariableNames[NMAGVARS] = {
+		"Timestamp",
+		"Latitude",
+		"Longitude",
+		"Radius",
+		"B_NEC"
+	};
+
+    // time range as CDF Epochs.
+	double firstCdfTime = dayTimeToCdfEpoch(year, month, day, firstTime);
+	double lastCdfTime = dayTimeToCdfEpoch(year, month, day, lastTime);
+
 	printf("%sReading inputs from %s\n", infoHeader, magFilename);
-	loadCdf(magFilename, magVariableNames, NMAGVARS, magVariables, &nInputs);
+	loadCdf(magFilename, firstCdfTime, lastCdfTime, magVariableNames, NMAGVARS, magVariables, &nInputs);
 	if (nInputs == 0)
 	{
 		fprintf(stderr, "%sFound no measurements in MAG file.\n", infoHeader);
@@ -247,7 +358,7 @@ cleanup:
 
 void usage(const char* name)
 {
-	printf("Usage: %s XYYYYMMDD magDataset chaosModelCoefficientsDir magCdfDir outputDir\n", name);
+	printf("Usage: %s XYYYYMMDD magDataset chaosModelCoefficientsDir magCdfDir outputDir [--first-time=hhmmss[.fractionalSecond]] [--last-time=hhmmss[.fractionalSecond]] [--about] [--help]\n", name);
 	printf(" X: satellite letter A, B, or C\n");
 	printf(" YYYYMMDD: year, month, day\n");
 	printf(" magDataset:\n");
@@ -256,6 +367,10 @@ void usage(const char* name)
 	printf(" chaosModelCoefficientsDir: directory containing SHC files\n");
 	printf(" magCdfDir: directory containing MAG_HR CDFs\n");
 	printf(" outputDir: directory to store magnetic field vectors\n");
+    printf(" --first-time=hhmmss[.fractionalSecond]: process from this time on the specified date.\n");
+    printf(" --last-time=hhmmss[.fractionalSecond]: process trhough to this time on the specified date.\n");
+    printf(" --about: print version and license information.\n");
+    printf(" --help: print this message.\n");
 
 	return;
 }

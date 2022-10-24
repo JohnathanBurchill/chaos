@@ -34,7 +34,7 @@ enum CDF_UTILS {
     CDF_FIND_FILENAME = -1
 };
 
-void loadCdf(const char *cdfFile, char *variables[], int nVariables, uint8_t **dataBuffers, size_t *numberOfRecords);
+void loadCdf(const char *cdfFile, double firstTime, double lastTime, char *variables[], int nVariables, uint8_t **dataBuffers, size_t *numberOfRecords);
 
 void printErrorMessage(CDFstatus status);
 
@@ -42,11 +42,13 @@ void closeCdf(CDFid id);
 
 int getInputFilename(const char satelliteLetter, long year, long month, long day, const char *path, const char *dataset, char *filename);
 
-int getOutputFilename(const char satellite, long year, long month, long day, const char *exportDir, double *beginTime, double *endTime, char *cdfFileName, char *magDataset);
+int getOutputFilename(const char satellite, long year, long month, long day, char *firstTimeString, char *lastTimeString, const char *exportDir, char *cdfFileName, char *magDataset);
 
 CDFstatus exportCdf(const char *cdfFilename, const char *magFilename, ChaosCoefficients *coeffs, const char satellite, const char *dataset, const char *exportVersion, double *times, double *latitudes, double *longitudes, double *radii, double *bCore, double *bCrust, double *dbMeas, size_t nVectors);
 
 void exportMetaInfo(const char *outputFilename, const char *magFilename, const char *chaosCoreFilename, const char *chaosStaticFilename, long nVectors, time_t startTime, time_t stopTime);
+
+double dayTimeToCdfEpoch(long year, long month, long day, double daySeconds);
 
 enum EXPORT_FLAGS {
     EXPORT_OK = 0,
