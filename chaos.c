@@ -368,7 +368,7 @@ void usage(const char* name)
 	printf(" magCdfDir: directory containing MAG_HR CDFs\n");
 	printf(" outputDir: directory to store magnetic field vectors\n");
     printf(" --first-time=hhmmss[.fractionalSecond]: process from this time on the specified date.\n");
-    printf(" --last-time=hhmmss[.fractionalSecond]: process trhough to this time on the specified date.\n");
+    printf(" --last-time=hhmmss[.fractionalSecond]: process through to this time on the specified date.\n");
     printf(" --about: print version and license information.\n");
     printf(" --help: print this message.\n");
 
