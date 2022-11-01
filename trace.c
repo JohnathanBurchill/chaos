@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 #include <gsl/gsl_errno.h>
-#include <gsl/gsl_odeiv.h>
+#include <gsl/gsl_odeiv2.h>
 #include <gsl/gsl_math.h>
 
 int initializeTracer(char *coeffDir, int year, int month, int day, ChaosCoefficients *coeffs)
@@ -55,34 +55,57 @@ int trace(ChaosCoefficients *coeffs, int startingDirection, double latitude, dou
     size_t steps = 0;
     // starting cartesian position
     // initial velocity is 0.0
-    double y[6] = {0.0};
+    double y[3] = {0.0};
     y[0] = r * sin(theta) * cos(phi);
     y[1] = r * sin(theta) * sin(phi);
     y[2] = r * cos(theta);
+    double yOld[3] = {0.0};
+    for (int i = 0; i < 3; i++)
+        yOld[i] = y[i];
 
     TracingState state = {0};
     state.coeffs = coeffs;
     state.startingDirection = (double) startingDirection; // +1 is parallel to B
     state.currentDirection = state.startingDirection;
     state.speed = 10.0; // km/s
-    const gsl_odeiv_step_type * T = gsl_odeiv_step_rkf45;
-    gsl_odeiv_step * s = gsl_odeiv_step_alloc(T, 6);
+    const gsl_odeiv2_step_type * T = gsl_odeiv2_step_rkf45;
+    gsl_odeiv2_step * s = gsl_odeiv2_step_alloc(T, 3);
     double threshold=1e-3;
-    gsl_odeiv_control * c = gsl_odeiv_control_y_new( threshold, 0. );
-    gsl_odeiv_evolve * e = gsl_odeiv_evolve_alloc( 6 );
-    gsl_odeiv_system sys = {force, NULL, 6, &state};
-    gsl_odeiv_step_reset(s);
+    gsl_odeiv2_control * c = gsl_odeiv2_control_y_new( threshold, 0. );
+    gsl_odeiv2_evolve * e = gsl_odeiv2_evolve_alloc( 3 );
+    gsl_odeiv2_system sys = {force, NULL, 3, &state};
+    gsl_odeiv2_step_reset(s);
    
     double t = 0.0;
     double ti = 0.0;
-    double h = 1.0;
-    double dtMax = 1.0;
+    double h = 0.5;
+    double dtMax = 0.5;
+    double tOld = 0.0;
+    double rOld = r;
     while (steps < maxSteps && r < rMax && r >= rMin)
     {
-        status = gsl_odeiv_evolve_apply(e, c, s, &sys, &t, t + dtMax, &h, y);
+        status = gsl_odeiv2_evolve_apply(e, c, s, &sys, &t, t + dtMax, &h, y);
         r = sqrt(y[0] * y[0] + y[1] * y[1] + y[2] * y[2]);
         // printf("h: %.1lf\t\n", r-earthRadiuskm);
-        steps++;
+        if ((r - rMax) > 0.0000001 || (r - rMin) < -0.0000001)
+        {
+            // printf("Resetting...\n");
+            t = tOld;
+            r = rOld;
+            for (int i = 0; i < 3; i++)
+                y[i] = yOld[i];
+            h /= 2.0;
+            dtMax /= 2.0;
+            gsl_odeiv2_step_reset(s);
+        }
+        else
+        {
+            tOld = t;
+            rOld = r;
+            for (int i = 0; i < 3; i++)
+                yOld[i] = y[i];
+            steps++;
+        }
     }
 
     // Store result
@@ -149,14 +172,10 @@ int force(double t, const double y[], double f[], void *data)
     double bMag = sqrt(bxyz[0] * bxyz[0] + bxyz[1] * bxyz[1] + bxyz[2] * bxyz[2]);
 
     // Update acceleration
-    // Velocity is set to 1 km/s parallel to field line but upward
+    // Velocity is set to 1 km/s parallel to field (for currentDirection == 1)
     f[0] = s->speed * s->currentDirection * bxyz[0] / bMag;
     f[1] = s->speed * s->currentDirection * bxyz[1] / bMag;
     f[2] = s->speed * s->currentDirection * bxyz[2] / bMag;
-    // Acceleration is set to 1 km/s/s parallel to field line but upward
-    f[3] = s->currentDirection * bxyz[0] / bMag;
-    f[4] = s->currentDirection * bxyz[1] / bMag;
-    f[5] = s->currentDirection * bxyz[2] / bMag;
 
     return GSL_SUCCESS;
 

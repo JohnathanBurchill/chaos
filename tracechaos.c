@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <string.h>
 #include <gsl/gsl_errno.h>
 
 sig_atomic_t keep_running;
@@ -19,10 +20,28 @@ int main (int argc, char *argv[])
 
     int nOptions = 0;
 
+    double minimumAltitudekm = 0.0;
+
+    for (int i = 0; i < argc; i++)
+    {
+        if (strncmp("--minimum-altitude-km=", argv[i], 21) == 0)
+        {
+            char *lastParsedChar = argv[i]+21;
+            double value = strtod(argv[i] + 21, &lastParsedChar);
+            if (lastParsedChar == argv[i] + 21)
+            {
+                fprintf(stderr, "%s: unable to parse %s\n", argv[0], argv[i]);
+                exit(EXIT_FAILURE);
+            }
+            minimumAltitudekm = value;
+        }
+    }
+
+
     if (argc - nOptions != 12)
     {
         printf("Incorrect number of arguments.\n");
-        printf("usage: %s coeffDir tracingDirection year month day glat glon galt minAlt maxAlt altitudestep\n", argv[0]);
+        printf("usage: %s coeffDir tracingDirection year month day glat glon startAlt stopAlt1 stopAlt2 altitudeStep [--minimum-altitude-km=value]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -34,9 +53,9 @@ int main (int argc, char *argv[])
 
     double latitude1 = atof(argv[6]);
     double longitude1 = atof(argv[7]);
-    double altitudekm1 = atof(argv[8]);
-    double minAlt = atof(argv[9]);
-    double maxAlt = atof(argv[10]);
+    double startAlt = atof(argv[8]);
+    double stopAlt1 = atof(argv[9]);
+    double stopAlt2 = atof(argv[10]);
     double deltaAltkm = atof(argv[11]);
 
     double latitude2 = 0.0;
@@ -51,12 +70,12 @@ int main (int argc, char *argv[])
     // Good for high latitudes up to Swarm altitude
     long steps = 0;
     double finalAltitude = 0.0;
-    for (double alt = altitudekm1; alt <= maxAlt; alt+=deltaAltkm)
+    for (double alt = stopAlt1; alt <= stopAlt2; alt+=deltaAltkm)
     {
         // Inefficient. Could store steps along the way in the trace function
-        status = trace(&coeffs, startingDirection, latitude1, longitude1, altitudekm1, minAlt, alt, &latitude2, &longitude2, &finalAltitude, &steps);
+        status = trace(&coeffs, startingDirection, latitude1, longitude1, startAlt, minimumAltitudekm, alt, &latitude2, &longitude2, &finalAltitude, &steps);
 
-        printf("%lf %lf %lf %lf %lf %lf %ld\n", latitude1, longitude1, altitudekm1, latitude2, longitude2, finalAltitude, steps);
+        printf("%lf %lf %lf %lf %lf %lf %ld\n", latitude1, longitude1, startAlt, latitude2, longitude2, finalAltitude, steps);
 
     }
 
