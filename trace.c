@@ -184,7 +184,6 @@ int force(double t, const double y[], double f[], void *data)
 
     double bMag = sqrt(bxyz[0] * bxyz[0] + bxyz[1] * bxyz[1] + bxyz[2] * bxyz[2]);
 
-    // Update acceleration
     // Velocity is set to 1 km/s parallel to field (for currentDirection == 1)
     f[0] = s->speed * s->currentDirection * bxyz[0] / bMag;
     f[1] = s->speed * s->currentDirection * bxyz[1] / bMag;
