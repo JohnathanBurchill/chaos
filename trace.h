@@ -7,7 +7,8 @@ enum ChaosTraceStatus
 {
     CHAOS_TRACE_OK = 0,
     CHAOS_TRACE_COEFFICIENTS,
-    CHAOS_TRACE_POINTER
+    CHAOS_TRACE_POINTER,
+    CHAOS_TRACE_GSL_ERROR
 };
 
 typedef struct TracingState

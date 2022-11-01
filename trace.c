@@ -71,8 +71,17 @@ int trace(ChaosCoefficients *coeffs, int startingDirection, double latitude, dou
 
     gsl_odeiv2_system sys = {force, NULL, 3, &state};
     double h = 0.5;
-    double threshold=1e-3;
-    gsl_odeiv2_driver *driver = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rkf45, h, threshold, 0.0);
+    double threshold=1e-2;
+    // Something something "variable-coefficient linear multistep Adams method in Nordsieck form"
+    // From GSL doc on Ordinary Differential Equations
+    // Faster than RKF45
+    // apex.f (A.D. Richmond, August 1994: 
+    //   ITRACE subroutine: "This uses the 4-point Adams formula after initialization.
+    //                       First 7 iterations advance point by 3 steps.""
+    // Same Adams?
+
+    // Need to check accuracy of the results at some point.
+    gsl_odeiv2_driver *driver = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_msadams, h, threshold, 0.0);
    
     double t = 0.0;
     double ti = 0.0;
@@ -82,6 +91,11 @@ int trace(ChaosCoefficients *coeffs, int startingDirection, double latitude, dou
     while (steps < maxSteps && r < rMax && r >= rMin)
     {
         status = gsl_odeiv2_driver_apply(driver, &t, t + dtMax, y);
+        if (status != GSL_SUCCESS)
+        {
+            gsl_odeiv2_driver_free(driver);
+            return CHAOS_TRACE_GSL_ERROR;
+        }
         r = sqrt(y[0] * y[0] + y[1] * y[1] + y[2] * y[2]);
         // printf("h: %.1lf\t\n", r-earthRadiuskm);
         if ((r - rMax) > 0.0000001 || (r - rMin) < -0.0000001)
