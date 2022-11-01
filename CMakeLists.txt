@@ -52,3 +52,4 @@ ADD_EXECUTABLE(tracechaos tracechaos.c)
 TARGET_LINK_LIBRARIES(tracechaos chaostrace ${LIBS} -lgsl -lm -lgslcblas)
 
 install(TARGETS chaos DESTINATION $ENV{HOME}/bin)
+install(TARGETS tracechaos DESTINATION $ENV{HOME}/bin)
