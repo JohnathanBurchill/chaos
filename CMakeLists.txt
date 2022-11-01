@@ -40,7 +40,15 @@ FIND_LIBRARY(CBLAS gslcblas)
 
 # SET(LIBS ${LIBS} ${MATH} ${LIBXML2_LIBRARIES} ${ZLIB_LIBRARIES})
 
+INCLUDE_DIRECTORIES(include)
+
+ADD_LIBRARY(chaostrace trace.c model.c shc.c)
+
+
 ADD_EXECUTABLE(chaos chaos.c cdf_utils.c cdf_vars.c cdf_attrs.c shc.c model.c)
 TARGET_LINK_LIBRARIES(chaos ${LIBS} ${CDF} -lgsl -lm -lgslcblas)
+
+ADD_EXECUTABLE(tracechaos tracechaos.c)
+TARGET_LINK_LIBRARIES(tracechaos chaostrace ${LIBS} -lgsl -lm -lgslcblas)
 
 install(TARGETS chaos DESTINATION $ENV{HOME}/bin)
