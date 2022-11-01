@@ -68,23 +68,20 @@ int trace(ChaosCoefficients *coeffs, int startingDirection, double latitude, dou
     state.startingDirection = (double) startingDirection; // +1 is parallel to B
     state.currentDirection = state.startingDirection;
     state.speed = 10.0; // km/s
-    const gsl_odeiv2_step_type * T = gsl_odeiv2_step_rkf45;
-    gsl_odeiv2_step * s = gsl_odeiv2_step_alloc(T, 3);
-    double threshold=1e-3;
-    gsl_odeiv2_control * c = gsl_odeiv2_control_y_new( threshold, 0. );
-    gsl_odeiv2_evolve * e = gsl_odeiv2_evolve_alloc( 3 );
+
     gsl_odeiv2_system sys = {force, NULL, 3, &state};
-    gsl_odeiv2_step_reset(s);
+    double h = 0.5;
+    double threshold=1e-3;
+    gsl_odeiv2_driver *driver = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rkf45, h, threshold, 0.0);
    
     double t = 0.0;
     double ti = 0.0;
-    double h = 0.5;
     double dtMax = 0.5;
     double tOld = 0.0;
     double rOld = r;
     while (steps < maxSteps && r < rMax && r >= rMin)
     {
-        status = gsl_odeiv2_evolve_apply(e, c, s, &sys, &t, t + dtMax, &h, y);
+        status = gsl_odeiv2_driver_apply(driver, &t, t + dtMax, y);
         r = sqrt(y[0] * y[0] + y[1] * y[1] + y[2] * y[2]);
         // printf("h: %.1lf\t\n", r-earthRadiuskm);
         if ((r - rMax) > 0.0000001 || (r - rMin) < -0.0000001)
@@ -96,7 +93,7 @@ int trace(ChaosCoefficients *coeffs, int startingDirection, double latitude, dou
                 y[i] = yOld[i];
             h /= 2.0;
             dtMax /= 2.0;
-            gsl_odeiv2_step_reset(s);
+            gsl_odeiv2_driver_reset(driver);
         }
         else
         {
@@ -117,6 +114,8 @@ int trace(ChaosCoefficients *coeffs, int startingDirection, double latitude, dou
 
     if (stepsTaken != NULL)
         *stepsTaken = steps;
+
+    gsl_odeiv2_driver_free(driver);
 
     return CHAOS_TRACE_OK;
 
