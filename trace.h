@@ -21,7 +21,7 @@ typedef struct TracingState
 
 int initializeTracer(char *coeffDir, int year, int month, int day, ChaosCoefficients *coeffs);
 
-int trace(ChaosCoefficients *coeffs, int startingDirection, double latitude, double longitude, double alt1km, double minAltkm, double maxAltkm, double *latitude2, double *longitude2, double *altitude2, long *stepsTaken);
+int trace(ChaosCoefficients *coeffs, int startingDirection, double accuracy, double latitude, double longitude, double alt1km, double minAltkm, double maxAltkm, double *latitude2, double *longitude2, double *altitude2, long *stepsTaken);
 
 int force(double t, const double y[], double f[], void *data);
 int internalFieldNEC(double r, double theta, double phi, ChaosCoefficients *coeffs, double *bInt);

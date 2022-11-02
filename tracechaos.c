@@ -21,6 +21,7 @@ int main (int argc, char *argv[])
     int nOptions = 0;
 
     double minimumAltitudekm = 0.0;
+    double accuracy = 0.001;
 
     for (int i = 0; i < argc; i++)
     {
@@ -34,6 +35,19 @@ int main (int argc, char *argv[])
                 exit(EXIT_FAILURE);
             }
             minimumAltitudekm = value;
+            nOptions++;
+        }
+        if (strncmp("--accuracy=", argv[i], 11) == 0)
+        {
+            char *lastParsedChar = argv[i]+11;
+            double value = strtod(argv[i] + 11, &lastParsedChar);
+            if (lastParsedChar == argv[i] + 11)
+            {
+                fprintf(stderr, "%s: unable to parse %s\n", argv[0], argv[i]);
+                exit(EXIT_FAILURE);
+            }
+            accuracy = value;
+            nOptions++;
         }
     }
 
@@ -73,7 +87,7 @@ int main (int argc, char *argv[])
     for (double alt = stopAlt1; alt <= stopAlt2; alt+=deltaAltkm)
     {
         // Inefficient. Could store steps along the way in the trace function
-        status = trace(&coeffs, startingDirection, latitude1, longitude1, startAlt, minimumAltitudekm, alt, &latitude2, &longitude2, &finalAltitude, &steps);
+        status = trace(&coeffs, startingDirection, accuracy, latitude1, longitude1, startAlt, minimumAltitudekm, alt, &latitude2, &longitude2, &finalAltitude, &steps);
 
         printf("%lf %lf %lf %lf %lf %lf %ld\n", latitude1, longitude1, startAlt, latitude2, longitude2, finalAltitude, steps);
 

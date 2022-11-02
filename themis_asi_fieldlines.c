@@ -27,6 +27,7 @@ int main (int argc, char *argv[])
     int nOptions = 0;
 
     double minimumAltitudekm = 0.0;
+    double accuracy = 0.001;
 
     for (int i = 0; i < argc; i++)
     {
@@ -40,6 +41,19 @@ int main (int argc, char *argv[])
                 exit(EXIT_FAILURE);
             }
             minimumAltitudekm = value;
+            nOptions++;
+        }
+        if (strncmp("--accuracy=", argv[i], 11) == 0)
+        {
+            char *lastParsedChar = argv[i]+11;
+            double value = strtod(argv[i] + 11, &lastParsedChar);
+            if (lastParsedChar == argv[i] + 11)
+            {
+                fprintf(stderr, "%s: unable to parse %s\n", argv[0], argv[i]);
+                exit(EXIT_FAILURE);
+            }
+            accuracy = value;
+            nOptions++;
         }
     }
 
@@ -47,7 +61,7 @@ int main (int argc, char *argv[])
     if (argc - nOptions != 8)
     {
         printf("Incorrect number of arguments.\n");
-        printf("usage: %s themisL2File coeffDir year month day startAltkm swarmAltkm [--minimum-altitude-km=value]\n", argv[0]);
+        printf("usage: %s themisL2File coeffDir year month day startAltkm swarmAltkm [--minimum-altitude-km=value] [--accuracy=value]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -206,7 +220,7 @@ int main (int argc, char *argv[])
             lon = longitudes[i*257+j];
             if (!isfinite(lat) || !isfinite(lon))
                 continue;
-            status = trace(&coeffs, -1, lat, lon, startAlt, minimumAltitudekm, swarmAlt, &latitude, &longitude, &altitude, &steps);
+            status = trace(&coeffs, -1, accuracy, lat, lon, startAlt, minimumAltitudekm, swarmAlt, &latitude, &longitude, &altitude, &steps);
             printf("%d %d %lf %lf %lf\n", i, j, latitude, longitude, altitude*1000.0);
         }
 

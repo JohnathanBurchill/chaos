@@ -25,7 +25,7 @@ int initializeTracer(char *coeffDir, int year, int month, int day, ChaosCoeffici
     }
 }
 
-int trace(ChaosCoefficients *coeffs, int startingDirection, double latitude, double longitude, double alt1km, double minAltkm, double maxAltkm, double *latitude2, double *longitude2, double *altitude2, long *stepsTaken)
+int trace(ChaosCoefficients *coeffs, int startingDirection, double accuracy, double latitude, double longitude, double alt1km, double minAltkm, double maxAltkm, double *latitude2, double *longitude2, double *altitude2, long *stepsTaken)
 {
 
     if (latitude2 == NULL || longitude2 == NULL || altitude2 == NULL)
@@ -71,7 +71,6 @@ int trace(ChaosCoefficients *coeffs, int startingDirection, double latitude, dou
 
     gsl_odeiv2_system sys = {force, NULL, 3, &state};
     double h = 0.5;
-    double threshold=1e-2;
     // Something something "variable-coefficient linear multistep Adams method in Nordsieck form"
     // From GSL doc on Ordinary Differential Equations
     // Faster than RKF45
@@ -81,7 +80,7 @@ int trace(ChaosCoefficients *coeffs, int startingDirection, double latitude, dou
     // Same Adams?
 
     // Need to check accuracy of the results at some point.
-    gsl_odeiv2_driver *driver = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_msadams, h, threshold, 0.0);
+    gsl_odeiv2_driver *driver = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_msadams, h, accuracy, 0.0);
    
     double t = 0.0;
     double ti = 0.0;
