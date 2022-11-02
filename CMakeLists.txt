@@ -51,5 +51,9 @@ TARGET_LINK_LIBRARIES(chaos ${LIBS} ${CDF} -lgsl -lm -lgslcblas)
 ADD_EXECUTABLE(tracechaos tracechaos.c)
 TARGET_LINK_LIBRARIES(tracechaos chaostrace ${LIBS} -lgsl -lm -lgslcblas)
 
+ADD_EXECUTABLE(themis_asi_fieldlines themis_asi_fieldlines.c)
+TARGET_LINK_LIBRARIES(themis_asi_fieldlines chaostrace ${LIBS} -lgsl -lm -lgslcblas -lcdf)
+
 install(TARGETS chaos DESTINATION $ENV{HOME}/bin)
 install(TARGETS tracechaos DESTINATION $ENV{HOME}/bin)
+install(TARGETS themis_asi_fieldlines DESTINATION $ENV{HOME}/bin)
