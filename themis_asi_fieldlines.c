@@ -12,6 +12,8 @@
 #include <gsl/gsl_errno.h>
 #include <cdf.h>
 
+#include <omp.h>
+
 sig_atomic_t keep_running;
 char infoHeader[50];
 
@@ -212,6 +214,7 @@ int main (int argc, char *argv[])
     double lat = 0.0;
     double lon = 0.0;
 
+#pragma omp parallel for
     for (int i = 0; i < 257; i++)
     {
         for (int j = 0; j < 257; j++)
