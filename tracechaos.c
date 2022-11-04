@@ -25,11 +25,11 @@ int main (int argc, char *argv[])
 
     for (int i = 0; i < argc; i++)
     {
-        if (strncmp("--minimum-altitude-km=", argv[i], 21) == 0)
+        if (strncmp("--minimum-altitude-km=", argv[i], 22) == 0)
         {
-            char *lastParsedChar = argv[i]+21;
-            double value = strtod(argv[i] + 21, &lastParsedChar);
-            if (lastParsedChar == argv[i] + 21)
+            char *lastParsedChar = argv[i]+22;
+            double value = strtod(argv[i] + 22, &lastParsedChar);
+            if (lastParsedChar == argv[i] + 22)
             {
                 fprintf(stderr, "%s: unable to parse %s\n", argv[0], argv[i]);
                 exit(EXIT_FAILURE);
