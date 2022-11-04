@@ -75,6 +75,8 @@ int main (int argc, char *argv[])
     double startAlt = atof(argv[6]);
     double swarmAlt = atof(argv[7]);
 
+    float finalAltitudeskm[257][257] = {0.0};
+
     // Open Themis L2 file and get geographic position of each 256x256 pixel for specified altitude. (65535 positions)
 
     if (access(themisL2File, F_OK) != 0)
@@ -214,7 +216,26 @@ int main (int argc, char *argv[])
     double lat = 0.0;
     double lon = 0.0;
 
+
+
+    for (int i = 0; i < 257; i++)
+    {
+        if (i % 26 == 0)
+            fprintf(stderr, "i = %d of 257\n", i);
 #pragma omp parallel for
+        for (int j = 0; j < 257; j++)
+        {
+            lat = latitudes[i*257+j];
+            lon = longitudes[i*257+j];
+            if (!isfinite(lat) || !isfinite(lon))
+                continue;
+            status = trace(&coeffs, -1, accuracy, lat, lon, startAlt, minimumAltitudekm, swarmAlt, &latitude, &longitude, &altitude, &steps);
+            finalAltitudeskm[i][j] = altitude;
+        }
+
+
+    }
+
     for (int i = 0; i < 257; i++)
     {
         for (int j = 0; j < 257; j++)
@@ -223,13 +244,11 @@ int main (int argc, char *argv[])
             lon = longitudes[i*257+j];
             if (!isfinite(lat) || !isfinite(lon))
                 continue;
-            status = trace(&coeffs, -1, accuracy, lat, lon, startAlt, minimumAltitudekm, swarmAlt, &latitude, &longitude, &altitude, &steps);
-            printf("%d %d %lf %lf %lf\n", i, j, latitude, longitude, altitude*1000.0);
+            printf("%d %d %lf %lf %lf\n", i, j, latitude, longitude, finalAltitudeskm[i][j]*1000.0);
         }
 
 
     }
-
 
     CDFclose(cdf);
     free(latitudes);
