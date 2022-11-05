@@ -12,8 +12,6 @@
 #include <gsl/gsl_errno.h>
 #include <cdf.h>
 
-#include <omp.h>
-
 sig_atomic_t keep_running;
 char infoHeader[50];
 
@@ -74,10 +72,6 @@ int main (int argc, char *argv[])
     int day = atoi(argv[5]);
     double startAlt = atof(argv[6]);
     double swarmAlt = atof(argv[7]);
-
-    float finalLatitudes[257][257] = {0.0};
-    float finalLongitudes[257][257] = {0.0};
-    float finalAltitudeskm[257][257] = {0.0};
 
     // Open Themis L2 file and get geographic position of each 256x256 pixel for specified altitude. (65535 positions)
 
@@ -203,11 +197,6 @@ int main (int argc, char *argv[])
     }
     CDFdataFree(data);
 
-    // for (int i = 0; i < 257*257; i++)
-    // {
-    //     printf("%.1f %.1f\n", latitudes[i], longitudes[i]);
-    // }
-
 	ChaosCoefficients coeffs = {0};
     status = initializeTracer(coeffDir, year, month, day, &coeffs);
     long steps = 0;
@@ -222,9 +211,9 @@ int main (int argc, char *argv[])
 
     for (int i = 0; i < 257; i++)
     {
-        if (i % 26 == 0)
+        if (i % 3 == 0)
             fprintf(stderr, "i = %d of 257\n", i);
-#pragma omp parallel for private(lat,lon,status,latitude,longitude,altitude,steps)
+
         for (int j = 0; j < 257; j++)
         {
             lat = latitudes[i*257+j];
@@ -232,23 +221,7 @@ int main (int argc, char *argv[])
             if (!isfinite(lat) || !isfinite(lon))
                 continue;
             status = trace(&coeffs, -1, accuracy, lat, lon, startAlt, minimumAltitudekm, swarmAlt, &latitude, &longitude, &altitude, &steps);
-            finalLatitudes[i][j] = latitude;
-            finalLongitudes[i][j] = longitude;
-            finalAltitudeskm[i][j] = altitude;
-        }
-
-
-    }
-
-    for (int i = 0; i < 257; i++)
-    {
-        for (int j = 0; j < 257; j++)
-        {
-            lat = latitudes[i*257+j];
-            lon = longitudes[i*257+j];
-            if (!isfinite(lat) || !isfinite(lon))
-                continue;
-            printf("%d %d %lf %lf %lf\n", i, j, finalLatitudes[i][j], finalLongitudes[i][j], finalAltitudeskm[i][j]*1000.0);
+            printf("%d %d %lf %lf %lf\n", i, j, latitude, longitude, altitude*1000.0);
         }
 
 
