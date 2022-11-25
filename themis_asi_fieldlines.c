@@ -1,4 +1,5 @@
 #include "trace.h"
+#include "model.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -120,7 +121,7 @@ int main (int argc, char *argv[])
     long recVary = 0;
     long dimsVary[CDF_MAX_DIMS] = {0};
 
-    // Altitude
+    // Altitude (geodetic)
     cdfStatus = CDFreadzVarAllByVarName(cdf, altVar, &nRecs, &dataType, &nElem, &nDims, dimSizes, &recVary, dimsVary, &data);
     if (cdfStatus != CDF_OK)
     {
@@ -155,7 +156,7 @@ int main (int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    // 257 x 257 latitudes and longitudes at corners of pixels
+    // 257 x 257 geodetic latitudes and longitudes at corners of pixels
     float *latitudes = (float*)calloc(257 * 257, sizeof(float));
     float *longitudes = (float*)calloc(257 * 257,  sizeof(float));
     if (latitudes == NULL || longitudes == NULL)
@@ -206,7 +207,9 @@ int main (int argc, char *argv[])
     double altitude = 0.0;
     double lat = 0.0;
     double lon = 0.0;
-
+    double geocentricLat = 0.0;
+    double geocentricRadius = 0.0;
+    double sphericalAlt = 0.0;
 
 
     for (int i = 0; i < 257; i++)
@@ -220,7 +223,10 @@ int main (int argc, char *argv[])
             lon = longitudes[i*257+j];
             if (!isfinite(lat) || !isfinite(lon))
                 continue;
-            status = trace(&coeffs, -1, accuracy, lat, lon, startAlt, minimumAltitudekm, swarmAlt, &latitude, &longitude, &altitude, &steps);
+            geodeticToGeocentric(lat, lon, 1000.0 * startAlt, &geocentricLat, &geocentricRadius);
+            sphericalAlt = geocentricRadius / 1000.0 - EARTH_RADIUS_KM;
+            // Results in geocentric latitude, longitude, and spherical altitude (geocentric radius minus mean earth radius)
+            status = trace(&coeffs, -1, accuracy, lat, lon, sphericalAlt, minimumAltitudekm, swarmAlt, &latitude, &longitude, &altitude, &steps);
             printf("%d %d %lf %lf %lf\n", i, j, latitude, longitude, altitude*1000.0);
         }
 

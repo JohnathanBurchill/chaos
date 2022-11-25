@@ -40,7 +40,7 @@ int trace(ChaosCoefficients *coeffs, int startingDirection, double accuracy, dou
 
     double theta = (90.0 - latitude) * degrees;
     double phi = longitude * degrees;
-    double earthRadiuskm = 6371.2;
+    double earthRadiuskm = EARTH_RADIUS_KM;
     double r = earthRadiuskm + alt1km;
     // Test calculation to see if we can calculate field without error
     status = internalFieldNEC(r, theta, phi, coeffs, bField);

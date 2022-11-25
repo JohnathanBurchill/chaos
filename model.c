@@ -219,3 +219,42 @@ int calculateResiduals(ChaosCoefficients *coeffs, int interpolationSkip, uint8_t
     return CHAOS_MODEL_OK;
 
 }
+
+void geodeticToGeocentric(double geodeticLatitude, double longitude, double heightM, double *geocentricLatitude, double *geocentricRadius)
+{
+    double a = 6378137.0;
+    double b = 6356752.31425;
+    double a2 = a * a;
+    double b2 = b * b;
+
+    double e2 = (a2 - b2) / a2;
+
+    double sl = sin(geodeticLatitude * M_PI / 180.0);
+    double cl = cos(geodeticLatitude * M_PI / 180.0);
+    double cp = cos(longitude * M_PI / 180.0);
+    double sp = sin(longitude * M_PI / 180.0);
+
+    double sl2 = sl * sl;
+
+    double n = a / sqrt(1.0 - e2 * sl2);
+
+    double f = (a - b) / a;
+
+    double nf = (n * (1 - f) * (1 - f) + heightM);
+    double nh = n + heightM;
+
+    double x = nh * cl * cp;
+    double y = nh * cl * sp;
+    double z = nf * sl;
+    double r = sqrt(x * x + y * y + z * z);
+
+    double geocentricLat = atan(nf / nh * tan(geodeticLatitude * M_PI / 180.0)) * 180.0 / M_PI;
+
+    if (geocentricLatitude != NULL)
+        *geocentricLatitude = geocentricLat;
+
+    if (geocentricRadius != NULL)
+        *geocentricRadius = r;
+
+    return;
+}

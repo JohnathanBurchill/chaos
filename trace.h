@@ -3,6 +3,8 @@
 
 #include "shc.h"
 
+#define EARTH_RADIUS_KM 6371.2
+
 enum ChaosTraceStatus
 {
     CHAOS_TRACE_OK = 0,
