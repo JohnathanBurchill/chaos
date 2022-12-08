@@ -31,6 +31,14 @@ int trace(ChaosCoefficients *coeffs, int startingDirection, double accuracy, dou
     if (latitude2 == NULL || longitude2 == NULL || altitude2 == NULL)
         return CHAOS_TRACE_POINTER;
 
+    if (!isfinite(latitude) || !isfinite(longitude) || !isfinite(alt1km))
+    {
+        *latitude2 = nan("");
+        *longitude2 = nan("");
+        *altitude2 = nan("");
+        return CHAOS_TRACE_OK;
+    }
+
     int status = CHAOS_TRACE_OK;
 
     // NEC system
