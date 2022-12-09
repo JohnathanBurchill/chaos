@@ -2,3 +2,5 @@ build
 TestFiles
 .vscode
 Mathematica
+scratch.c
+example
