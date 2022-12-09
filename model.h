@@ -1,6 +1,6 @@
 /*
 
-    CHAOS: model.c
+    CHAOS: model.h
 
     Copyright (C) 2022  Johnathan K Burchill
 
