@@ -39,6 +39,4 @@ int calculateField(double r, double theta, double phi, SHCCoefficients *coeffs, 
 
 int calculateResiduals(ChaosCoefficients *coeffs, int interpolationSkip, uint8_t *magVariables[], size_t nInputs, double *bCore, double *bCrust, double *dbMeas);
 
-void geodeticToGeocentric(double geodeticLatitude, double longitude, double heightM, double *geocentricLatitude, double *geocentricRadius);
-
 #endif // _CHAOS_MODEL_H

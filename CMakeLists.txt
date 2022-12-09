@@ -33,18 +33,14 @@ endif(CMAKE_BUILD_TYPE STREQUAL Debug)
 
 # requires -lm on linux
 FIND_LIBRARY(MATH m)
-FIND_PACKAGE(ZLIB REQUIRED)
 FIND_LIBRARY(CDF cdf)
 FIND_LIBRARY(GSL gsl)
 FIND_LIBRARY(CBLAS gslcblas)
 
-# SET(LIBS ${LIBS} ${MATH} ${LIBXML2_LIBRARIES} ${ZLIB_LIBRARIES})
 
 INCLUDE_DIRECTORIES(include)
 
 ADD_LIBRARY(chaostrace trace.c model.c shc.c)
-
-find_package(OpenMP)
 
 ADD_EXECUTABLE(chaos chaos.c cdf_utils.c cdf_vars.c cdf_attrs.c shc.c model.c)
 TARGET_LINK_LIBRARIES(chaos ${LIBS} ${CDF} -lgsl -lm -lgslcblas)
@@ -52,14 +48,8 @@ TARGET_LINK_LIBRARIES(chaos ${LIBS} ${CDF} -lgsl -lm -lgslcblas)
 ADD_EXECUTABLE(tracechaos tracechaos.c)
 TARGET_LINK_LIBRARIES(tracechaos chaostrace ${LIBS} -lgsl -lm -lgslcblas)
 
-ADD_EXECUTABLE(themis_asi_fieldlines themis_asi_fieldlines.c)
-if(OpenMP_C_FOUND)
-    message( "-- OPENMP found")
-    TARGET_LINK_LIBRARIES(themis_asi_fieldlines chaostrace ${LIBS} -lgsl -lm -lgslcblas -lcdf OpenMP::OpenMP_C)
-else()
-    TARGET_LINK_LIBRARIES(themis_asi_fieldlines chaostrace ${LIBS} -lgsl -lm -lgslcblas -lcdf)
-
-endif()
+ADD_EXECUTABLE(themis_asi_fieldlines themis_asi_fieldlines.c util.c)
+TARGET_LINK_LIBRARIES(themis_asi_fieldlines chaostrace ${LIBS} ${CDF} -lgsl -lm -lgslcblas)
 
 install(TARGETS chaos DESTINATION $ENV{HOME}/bin)
 install(TARGETS tracechaos DESTINATION $ENV{HOME}/bin)
