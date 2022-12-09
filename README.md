@@ -20,6 +20,8 @@ The program `themis_asi_fieldlines` traces field-lines from an assumed auroral e
 
 [GNU/Linux](https://www.getgnulinux.org/en/linux), [CMake](https://cmake.org), the [GNU Compiler Collection](https://gcc.gnu.org), the [GNU Scientifc Library](https://www.gnu.org/software/gsl/), and the [NASA CDF library](https://cdf.gsfc.nasa.gov).
 
+## License
+
 Copyright (C) 2022   Johnathan K Burchill
 
 Developed at the University of Calgary (2022) with support of the Canadian Space Agency. 
