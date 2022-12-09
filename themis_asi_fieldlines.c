@@ -308,8 +308,6 @@ int main (int argc, char *argv[])
     double altitude = 0.0;
     double sphericalAltKm = 0.0;
 
-    printf("MinAltkm: %lf\n", minimumAltitudekm);
-    printf("targetAltKm: %lf\n", targetAltKm);
     int progressCounter = 0;
     int expectedTraces = (IMAGE_COLUMNS + 1) * (IMAGE_ROWS + 1);
     for (int i = 0; i < IMAGE_COLUMNS + 1; i++)
