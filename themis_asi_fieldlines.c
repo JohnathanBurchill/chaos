@@ -317,8 +317,6 @@ int main (int argc, char *argv[])
         for (int j = 0; j < IMAGE_ROWS + 1; j++)
         {
             progressCounter++;
-            if (progressCounter >= 350)
-                break;
             if (!isfinite(geocentricPositionCorners[i][j][0]))
                 continue;
             sphericalAltKm = geocentricPositionCorners[i][j][2] / 1000.0 - EARTH_RADIUS_KM;
