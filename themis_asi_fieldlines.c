@@ -825,7 +825,7 @@ int main (int argc, char *argv[])
         CDFcloseCDF(cdf);
         return EXIT_FAILURE;
     }
-    cdfStatus = addVariableAttributes(cdf, "CalibrationEpoch", "Epoch of ASI calibration. CHAOS-7 is initialized to the beginning of the day. Milliseconds from 0000-01-01:00:00:00 UT, no leap seconds", "-");
+    cdfStatus = addVariableAttributes(cdf, "CalibrationEpoch", "Epoch of ASI calibration. CHAOS-7 is initialized to the beginning of the day. Milliseconds from 0000-01-01:00:00:00 UT, no leap seconds.", "-");
     if (cdfStatus != CDF_OK)
     {
         CDFcloseCDF(cdf);
