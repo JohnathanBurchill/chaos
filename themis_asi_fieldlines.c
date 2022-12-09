@@ -314,9 +314,6 @@ int main (int argc, char *argv[])
     {
         for (int j = 0; j < IMAGE_ROWS + 1; j++)
         {
-            progressCounter++;
-            if (!isfinite(geocentricPositionCorners[i][j][0]))
-                continue;
             sphericalAltKm = geocentricPositionCorners[i][j][2] / 1000.0 - EARTH_RADIUS_KM;
             // Results in geocentric latitude, longitude, and spherical altitude in km(geocentric radius minus mean earth radius)
             status = trace(&coeffs, -1, accuracy, geocentricPositionCorners[i][j][0], geocentricPositionCorners[i][j][1], sphericalAltKm, minimumAltitudekm, targetAltKm, &latitude, &longitude, &altitude, &steps);
@@ -324,6 +321,7 @@ int main (int argc, char *argv[])
             tracedGeocentricPositionCorners[i][j][1] = longitude;
             tracedGeocentricPositionCorners[i][j][2] = 1000.0 * (altitude + EARTH_RADIUS_KM);
             // printf("pixelCornerIndex(%d, %d): %.2lf -> %.2lf N %.2lf -> %.2lf E %.1lf -> %.1lf km\n", i, j, geocentricPositionCorners[i][j][0], latitude, geocentricPositionCorners[i][j][1], longitude, sphericalAltKm, altitude);
+            progressCounter++;
             if (showProgress)
                 fprintf(stderr, "\r%6d of %d field lines traced", progressCounter, expectedTraces);
 
