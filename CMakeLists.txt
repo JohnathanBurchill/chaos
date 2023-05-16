@@ -1,6 +1,6 @@
 # CHAOS: CMakeLists.txt
 
-# Copyright (C) 2022  Johnathan K Burchill
+# Copyright (C) 2023  Johnathan K Burchill
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,6 +51,10 @@ TARGET_LINK_LIBRARIES(tracechaos chaostrace ${LIBS} -lgsl -lm -lgslcblas)
 ADD_EXECUTABLE(themis_asi_fieldlines themis_asi_fieldlines.c util.c)
 TARGET_LINK_LIBRARIES(themis_asi_fieldlines chaostrace ${LIBS} ${CDF} -lgsl -lm -lgslcblas)
 
+ADD_EXECUTABLE(chaos_calc chaos_calc.c util.c)
+TARGET_LINK_LIBRARIES(chaos_calc chaostrace ${LIBS} -lgsl -lm -lgslcblas)
+
 install(TARGETS chaos DESTINATION $ENV{HOME}/bin)
 install(TARGETS tracechaos DESTINATION $ENV{HOME}/bin)
 install(TARGETS themis_asi_fieldlines DESTINATION $ENV{HOME}/bin)
+install(TARGETS chaos_calc DESTINATION $ENV{HOME}/bin)
