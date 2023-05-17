@@ -261,7 +261,6 @@ int loadInputsFromFile(char *inFile, Data **data, size_t *nInputs, bool verbose)
         return CHAOS_STATUS_MEM;
     }
 
-    printf("nLines: %d\n", nLines);
     status = fseek(file, 0, SEEK_SET);
     if (status != 0)
     {
