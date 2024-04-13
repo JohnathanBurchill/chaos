@@ -23,10 +23,10 @@ SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/CMake")
 
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
-    message( "-- Debugging enabled")
+    message(STATUS "-- Debugging enabled")
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -std=gnu99 ")
 else (CMAKE_BUILD_TYPE STREQUAL Debug)
-    message( "-- Optimization enabled")
+    message(STATUS "-- Optimization enabled")
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -std=gnu99 ")
 endif(CMAKE_BUILD_TYPE STREQUAL Debug)
 

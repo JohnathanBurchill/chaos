@@ -2,7 +2,7 @@
 
     CHAOS: chaos_settings.c
 
-    Copyright (C) 2022  Johnathan K Burchill
+    Copyright (C) 2024  Johnathan K Burchill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,11 +24,11 @@
 #ifndef CHAOS_SETTINGS_H
 #define CHAOS_SETTINGS_H
 
-#define SOFTWARE_VERSION "1.3"
-#define SOFTWARE_VERSION_STRING "CHAOS 7 20221022"
+#define SOFTWARE_VERSION "1.4"
+#define SOFTWARE_VERSION_STRING "CHAOS 7 20240412"
 #define CHAOS_PRODUCT_TYPE "OPER"
 
-#define EXPORT_VERSION_STRING "0102"
+#define EXPORT_VERSION_STRING "0103"
 #define NUMBER_OF_EXPORT_VARIABLES 7
 #define CDF_GZIP_COMPRESSION_LEVEL 6
 

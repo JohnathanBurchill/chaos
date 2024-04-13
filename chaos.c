@@ -2,7 +2,7 @@
 
     CHAOS: chaos.c
 
-    Copyright (C) 2022  Johnathan K Burchill
+    Copyright (C) 2024  Johnathan K Burchill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -219,9 +219,9 @@ int main (int argc, char **argv)
 	char *magDir = argv[4];
 	char *outputDir = argv[5];
 
-	if (strcmp(magDataset, "LR_1B") != 0 && strcmp(magDataset, "HR_1B") != 0)
+	if (strcmp(magDataset, "LR_1B") != 0 && strcmp(magDataset, "HR_1B") != 0 && strcmp(magDataset, "GRACE") != 0)
 	{
-		fprintf(stderr, "Expected 'LR_1B' or 'HR_1B' for magDataset.\n");
+		fprintf(stderr, "Expected 'LR_1B' or 'HR_1B' or 'GRACE' for magDataset.\n");
 		usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
@@ -280,9 +280,7 @@ int main (int argc, char **argv)
 	}
 
 	// Magnetic field input data
-	// LR_1B product for development, much faster load time than HR_1B
 	if (getInputFilename(satellite, year, month, day, magDir, magDataset, magFilename))
-	// if (getInputFilename(satellite, year, month, day, magDir, "HR_1B", magFilename))
     {
         fprintf(stdout, "%sMAG input file is not available. Exiting.\n", infoHeader);
         exit(1);
@@ -362,8 +360,9 @@ void usage(const char* name)
 	printf(" X: satellite letter A, B, or C\n");
 	printf(" YYYYMMDD: year, month, day\n");
 	printf(" magDataset:\n");
-	printf("\tLR_1B: Input files are  1 Hz data.\n");
-	printf("\tHR_1B: Input files are 50 Hz data.\n");
+	printf("\tLR_1B: Swarm 1 Hz data.\n");
+	printf("\tHR_1B: Swarm 50 Hz data.\n");
+	printf("\tGRACE: Grace-FO 1 Hz data.\n");
 	printf(" chaosModelCoefficientsDir: directory containing SHC files\n");
 	printf(" magCdfDir: directory containing MAG_HR CDFs\n");
 	printf(" outputDir: directory to store magnetic field vectors\n");

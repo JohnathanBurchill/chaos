@@ -3,7 +3,7 @@
 
     CHAOS: cdf_utils.c
 
-    Copyright (C) 2022  Johnathan K Burchill
+    Copyright (C) 2024  Johnathan K Burchill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -253,6 +253,28 @@ int getInputFilename(const char satelliteLetter, long year, long month, long day
                 gotFile = true;
             }
         }
+        else if ((strlen(f->fts_name) == 63) && *(f->fts_name+2) == satelliteLetter && strncmp("GRACE", dataset, 5) == 0)
+        {
+            char fyear[5] = { 0 };
+            char fmonth[3] = { 0 };
+            char fday[3] = { 0 };
+            char version[5] = { 0 };
+            strncpy(fyear, f->fts_name + 23, 4);
+            fileYear = atol(fyear);
+            strncpy(fmonth, f->fts_name + 27, 2);
+            fileMonth = atol(fmonth);
+            strncpy(fday, f->fts_name + 29, 2);
+            fileDay = atol(fday);
+            strncpy(version, f->fts_name + 58, 4);
+            fileVersion = atol(version);
+            if (fileYear == year && fileMonth == month && fileDay == day && fileVersion > lastVersion)
+            {
+                lastVersion = fileVersion;
+                sprintf(filename, "%s", f->fts_path);
+                gotFile = true;
+            }
+        }
+
         f = fts_read(fts);
     }
 
@@ -271,12 +293,18 @@ int getInputFilename(const char satelliteLetter, long year, long month, long day
 int getOutputFilename(const char satellite, long year, long month, long day, char *firstTimeString, char *lastTimeString, const char *exportDir, char *cdfFileName, char *magDataset)
 {
 
-    if (satellite != 'A' && satellite != 'B' && satellite != 'C')
+    if (satellite == '1' || satellite == '2')
+    {
+        sprintf(cdfFileName, "%s/GF%c_%s_MAG%cC7%c_2__%04d%02d%02dT%s_%04d%02d%02dT%s_%s", exportDir, satellite, CHAOS_PRODUCT_TYPE, satellite, magDataset[0], (int)year, (int)month, (int)day, firstTimeString, (int)year, (int)month, (int)day, lastTimeString, EXPORT_VERSION_STRING);
+    }
+    else if (satellite == 'A' || satellite == 'B' || satellite == 'C')
+    {
+        sprintf(cdfFileName, "%s/SW_%s_MAG%cC7%c_2__%04d%02d%02dT%s_%04d%02d%02dT%s_%s", exportDir, CHAOS_PRODUCT_TYPE, satellite, magDataset[0], (int)year, (int)month, (int)day, firstTimeString, (int)year, (int)month, (int)day, lastTimeString, EXPORT_VERSION_STRING);
+    }
+    else
     {
         return -1;
     }
-
-    sprintf(cdfFileName, "%s/SW_%s_MAG%cC7%c_2__%04d%02d%02dT%s_%04d%02d%02dT%s_%s", exportDir, CHAOS_PRODUCT_TYPE, satellite, magDataset[0], (int)year, (int)month, (int)day, firstTimeString, (int)year, (int)month, (int)day, lastTimeString, EXPORT_VERSION_STRING);
 
     return 0;
 
