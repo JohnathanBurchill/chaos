@@ -24,6 +24,7 @@
 #include "model.h"
 
 #include <stdio.h>
+#include <time.h>
 
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_odeiv2.h>
@@ -37,12 +38,20 @@ int initializeTracer(char *coeffDir, int year, int month, int day, ChaosCoeffici
 	if (status != SHC_OK || !coeffs->initialized)
         return status;
 
-	status = interpolateSHCCoefficients(coeffs, year, month, day);
+    // Tracing is for a date, so evaluate the core field at 12:00 UTC
+    struct tm noon = {0};
+    noon.tm_year = year - 1900;
+    noon.tm_mon = month - 1;
+    noon.tm_mday = day;
+    noon.tm_hour = 12;
+	status = interpolateSHCCoefficients(coeffs, decimalYearFromUnixTime((double)timegm(&noon)));
 	if (status != SHC_OK)
     {
         freeChaosCoefficients(coeffs);
         return status;
     }
+
+    return CHAOS_MODEL_OK;
 }
 
 int trace(ChaosCoefficients *coeffs, int startingDirection, double accuracy, double latitude, double longitude, double alt1km, double minAltkm, double maxAltkm, double *latitude2, double *longitude2, double *altitude2, long *stepsTaken)

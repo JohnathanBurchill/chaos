@@ -270,15 +270,6 @@ int main (int argc, char **argv)
 		goto cleanup;
 	}
 
-	// Because MAG inputs are from daily CDF files, we only interpolate once.
-	// This is sufficient accuracy for space physics
-	status = interpolateSHCCoefficients(&coeffs, year, month, day);
-	if (status != SHC_OK)
-	{
-		fprintf(stderr, "%sCould not interpolate model coefficients: return code = %d.\n", infoHeader, status);
-		goto cleanup;
-	}
-
 	// Magnetic field input data
 	if (getInputFilename(satellite, year, month, day, magDir, magDataset, magFilename))
     {

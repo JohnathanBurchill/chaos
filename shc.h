@@ -25,6 +25,7 @@
 #include <stdbool.h>
 
 #define SHC_INFO_BUFFER_SIZE 1024
+#define SHC_MAX_SPLINE_ORDER 8
 
 enum SHCError {
     SHC_OK = 0,
@@ -76,9 +77,9 @@ int loadSHCCoefficients(SHCCoefficients *coeffs);
 void freeChaosCoefficients(ChaosCoefficients *coeffs);
 void freeSHCCoefficients(SHCCoefficients *coeffs);
 
-int interpolateSHCCoefficients(ChaosCoefficients *coeffs, int year, int month, int day);
+int interpolateSHCCoefficients(ChaosCoefficients *coeffs, double decimalYear);
 
-int yearFraction(long year, long month, long day, double* fractionalYear);
+double decimalYearFromUnixTime(double unixTime);
 
 
 #endif // _CHAOS_SHC_H

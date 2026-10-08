@@ -34,6 +34,9 @@
 extern sig_atomic_t keep_running;
 extern char infoHeader[50];
 
+// Seconds from the CDF_EPOCH origin (0000-01-01) to the Unix epoch
+#define CDF_EPOCH_UNIX_OFFSET_S 62167219200.0
+
 int calculateField(double r, double theta, double phi, SHCCoefficients *coeffs, double *bn, double *be, double *bc)
 {
 	double a = EARTH_RADIUS_KM;
@@ -139,6 +142,10 @@ int calculateResiduals(ChaosCoefficients *coeffs, int interpolationSkip, uint8_t
     phi = ((double*)magVariables[2])[0] * degrees;
     r = ((double*)magVariables[3])[0]/1000.;
 
+    status = interpolateSHCCoefficients(coeffs, decimalYearFromUnixTime(inputTime / 1000.0 - CDF_EPOCH_UNIX_OFFSET_S));
+    if (status != SHC_OK)
+        return CHAOS_MODEL_COEFFICIENTS;
+
     status = calculateField(r, theta, phi, &coeffs->core, bCore, bCore+1, bCore+2);
     if (status != CHAOS_MODEL_OK)
         return status;
@@ -158,6 +165,10 @@ int calculateResiduals(ChaosCoefficients *coeffs, int interpolationSkip, uint8_t
         theta = (90.0 - ((double*)magVariables[1])[t]) * degrees;
         phi = ((double*)magVariables[2])[t] * degrees;
         r = ((double*)magVariables[3])[t]/1000.;
+
+        status = interpolateSHCCoefficients(coeffs, decimalYearFromUnixTime(inputTime / 1000.0 - CDF_EPOCH_UNIX_OFFSET_S));
+        if (status != SHC_OK)
+            return CHAOS_MODEL_COEFFICIENTS;
 
         status = calculateField(r, theta, phi, &coeffs->core, bCore+t*3, bCore+t*3+1, bCore+t*3+2);
         if (status != CHAOS_MODEL_OK)
@@ -202,6 +213,10 @@ int calculateResiduals(ChaosCoefficients *coeffs, int interpolationSkip, uint8_t
         theta = (90.0 - ((double*)magVariables[1])[t]) * degrees;
         phi = ((double*)magVariables[2])[t] * degrees;
         r = ((double*)magVariables[3])[t]/1000.;
+
+        status = interpolateSHCCoefficients(coeffs, decimalYearFromUnixTime(inputTime / 1000.0 - CDF_EPOCH_UNIX_OFFSET_S));
+        if (status != SHC_OK)
+            return CHAOS_MODEL_COEFFICIENTS;
 
         status = calculateField(r, theta, phi, &coeffs->core, bCore+t*3, bCore+t*3+1, bCore+t*3+2);
         if (status != CHAOS_MODEL_OK)

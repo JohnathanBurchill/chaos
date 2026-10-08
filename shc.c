@@ -71,6 +71,29 @@ int loadModelCoefficients(const char *coeffDir, ChaosCoefficients *coeffs)
     }
 
     coeffs->initialized = coeffs->core.initialized && coeffs->coreExtrapolation.initialized && coeffs->crust.initialized;
+    if (!coeffs->initialized)
+        return SHC_OK;
+
+    // Time interpolation needs each polynomial piece sampled at bSplineOrder = bSplineSteps + 1 times
+    SHCCoefficients *timeDependent[2] = {&coeffs->core, &coeffs->coreExtrapolation};
+    for (int i = 0; i < 2; i++)
+    {
+        c = timeDependent[i];
+        if (c->bSplineSteps < 1 || c->bSplineOrder != c->bSplineSteps + 1 || c->bSplineOrder > SHC_MAX_SPLINE_ORDER || (c->numberOfTimes - 1) % c->bSplineSteps != 0)
+        {
+            fprintf(stderr, "Unexpected SHC spline order %d and step %d for %d times in %s\n", c->bSplineOrder, c->bSplineSteps, c->numberOfTimes, c->coeffFilename);
+            return SHC_INTERPOLATION;
+        }
+    }
+
+	// Crustal field is static, so copy g and h into gNow and hNow once
+	if (coeffs->crust.numberOfTimes != 1)
+	{
+		fprintf(stderr, "Expected 1 static (i.e. crustal) SHC time, got %d times\n", coeffs->crust.numberOfTimes);
+		return SHC_INTERPOLATION;
+	}
+	memcpy(coeffs->crust.gNow, coeffs->crust.gTimeSeries, coeffs->crust.gCoeffs * sizeof(double));
+	memcpy(coeffs->crust.hNow, coeffs->crust.hTimeSeries, coeffs->crust.hCoeffs * sizeof(double));
 
     return SHC_OK;
 }
@@ -233,123 +256,60 @@ void freeSHCCoefficients(SHCCoefficients *coeffs)
     return;
 }
 
-int interpolateSHCCoefficients(ChaosCoefficients *coeffs, int year, int month, int day)
+int interpolateSHCCoefficients(ChaosCoefficients *coeffs, double decimalYear)
 {
-	// Interpolate or extrapolate core model coefficients to the current day.
-	// A resolution of 1 day is sufficient for CHAOS core model calculations for space physics
+    // Core coefficients at decimalYear (see decimalYearFromUnixTime), into core.gNow and core.hNow.
+    // The core file samples each polynomial piece of the CHAOS B-spline at bSplineOrder times
+    // (bSplineSteps apart), so Lagrange interpolation through the piece containing decimalYear
+    // reproduces the spline. After the last core time, the extrapolation file (order 2, step 1)
+    // gives the linear continuation. Before the first core time, the first snapshot is held.
+    SHCCoefficients *c = &coeffs->core;
+    double t = decimalYear;
+    if (t > c->times[c->numberOfTimes - 1])
+        c = &coeffs->coreExtrapolation;
+    else if (t < c->times[0])
+        t = c->times[0];
 
-    double fractionalYear = 0.0;
-	int status = 0;
-    
-    status = yearFraction(year, month, day, &fractionalYear);
-	if (status != SHC_OK)
-		return status;
+    int nTimes = c->numberOfTimes;
+    int order = c->bSplineOrder;
 
-	ssize_t coefficientTimeIndex = 0;
-	ssize_t coefficientTimeIndexPlus1 = 0;
-	double timeFraction = 0.0;
-	double deltaTime = 0.0;
+    // First snapshot of the piece containing t; past the end, use the last piece
+    int k = 0;
+    while (k < nTimes - 1 && c->times[k + 1] <= t)
+        k++;
+    int first = (k / c->bSplineSteps) * c->bSplineSteps;
+    if (first + order > nTimes)
+        first = nTimes - order;
 
-    int nTimes = 0;
-    double *times = NULL;
-    double *gnmNow = coeffs->core.gNow;
-    double *hnmNow = coeffs->core.hNow;
-    double *gnm = NULL;
-    double *hnm = NULL;
-    size_t gCoeffs = 0;
-    size_t hCoeffs = 0;
-    // Linear extrapolation if time is greater than core field max time
-    if (fractionalYear > coeffs->core.times[coeffs->core.numberOfTimes-1])
+    double weights[SHC_MAX_SPLINE_ORDER];
+    for (int p = 0; p < order; p++)
     {
-        nTimes = coeffs->coreExtrapolation.numberOfTimes;
-        // Only two times for core extrapolation coefficients
-        if (nTimes != 2)
-            return SHC_INTERPOLATION;
-
-        coefficientTimeIndex = nTimes - 2;
-        coefficientTimeIndexPlus1 = nTimes -1;
-        times = coeffs->coreExtrapolation.times;
-        gnm = coeffs->coreExtrapolation.gTimeSeries;
-        hnm = coeffs->coreExtrapolation.hTimeSeries;
-        gCoeffs = coeffs->coreExtrapolation.gCoeffs;
-        hCoeffs = coeffs->coreExtrapolation.hCoeffs;
-
-        // The first time is the same as the last time of the core coefficients
-        deltaTime = times[coefficientTimeIndexPlus1] - times[coefficientTimeIndex];
-        timeFraction = (fractionalYear - times[0]) / deltaTime;
-    }
-    else
-    {
-        nTimes = coeffs->core.numberOfTimes;
-        coefficientTimeIndex = nTimes - 1;
-        times = coeffs->core.times;
-        gnm = coeffs->core.gTimeSeries;
-        hnm = coeffs->core.hTimeSeries;
-        gCoeffs = coeffs->core.gCoeffs;
-        hCoeffs = coeffs->core.hCoeffs;
-
-        // Interpolation / extrapolation
-
-        // Find nearest older time
-        while (coefficientTimeIndex > 0 && times[coefficientTimeIndex] > fractionalYear)
-            coefficientTimeIndex--;
-
-        // End points: constant extrapolation to get the end-point value
-        if (coefficientTimeIndex == 0 || coefficientTimeIndex == (nTimes - 1) )
+        weights[p] = 1.0;
+        for (int q = 0; q < order; q++)
         {
-            coefficientTimeIndexPlus1 = coefficientTimeIndex;
-            deltaTime = 1.0; // arbitrary, as we divide this into 0.0
+            if (q != p)
+                weights[p] *= (t - c->times[first + q]) / (c->times[first + p] - c->times[first + q]);
         }
-        else
-        {
-            // Linear interpolation is sufficient given the number of model times is 5x the knot points.
-            coefficientTimeIndexPlus1 = coefficientTimeIndex + 1;
-            deltaTime = times[coefficientTimeIndexPlus1] - times[coefficientTimeIndex];
-        }
-        timeFraction = (fractionalYear - times[coefficientTimeIndex]) / deltaTime;
-    }
-    for (int i = 0; i < gCoeffs; i++)
-    {
-        gnmNow[i] = gnm[i*nTimes + coefficientTimeIndex] + timeFraction * (gnm[i*nTimes + coefficientTimeIndexPlus1] - gnm[i*nTimes + coefficientTimeIndex]);
-    }
-    for (int i = 0; i < hCoeffs; i++)
-    {
-        hnmNow[i] = hnm[i*nTimes + coefficientTimeIndex] + timeFraction * (hnm[i*nTimes + coefficientTimeIndexPlus1] - hnm[i*nTimes + coefficientTimeIndex]);
     }
 
-	// Crustal field is static, so copy g and h into gNow and hNow
-	// If there is more than 1 time for the crustal field, abort
-	if (coeffs->crust.numberOfTimes != 1)
-	{
-		fprintf(stderr, "Expected 1 static (i.e. crustal) SHC time, got %d times\n", nTimes);
-		return SHC_INTERPOLATION;
-	}
-	for (int i = 0; i < coeffs->crust.gCoeffs; i++)
-		coeffs->crust.gNow[i] = coeffs->crust.gTimeSeries[i];
-
-	for (int i = 0; i < coeffs->crust.hCoeffs; i++)
-		coeffs->crust.hNow[i] = coeffs->crust.hTimeSeries[i];
+    for (size_t i = 0; i < c->gCoeffs; i++)
+    {
+        coeffs->core.gNow[i] = 0.0;
+        for (int p = 0; p < order; p++)
+            coeffs->core.gNow[i] += weights[p] * c->gTimeSeries[i * nTimes + first + p];
+    }
+    for (size_t i = 0; i < c->hCoeffs; i++)
+    {
+        coeffs->core.hNow[i] = 0.0;
+        for (int p = 0; p < order; p++)
+            coeffs->core.hNow[i] += weights[p] * c->hTimeSeries[i * nTimes + first + p];
+    }
 
     return SHC_OK;
 }
 
-// Calculates day of year: 1 January is day 1.
-int yearFraction(long year, long month, long day, double* fractionalYear)
+// CHAOS decimal year, 2000 + MJD2000 / 365.25, the time scale of the SHC times and spline knots
+double decimalYearFromUnixTime(double unixTime)
 {
-    time_t date;
-    struct tm dateStruct;
-    dateStruct.tm_year = year - 1900;
-    dateStruct.tm_mon = month - 1;
-    dateStruct.tm_mday = day;
-    dateStruct.tm_hour = 0;
-    dateStruct.tm_min = 0;
-    dateStruct.tm_sec = 0;
-    dateStruct.tm_yday = 0;
-    date = timegm(&dateStruct);
-    struct tm *dateStructUpdated = gmtime(&date);
-    if (dateStructUpdated == NULL)
-        return SHC_FRACTIONAL_YEAR;
-	// How does this work for leap years?
-    *fractionalYear = (double) year + (double)(dateStructUpdated->tm_yday + 1)/365.25;
-    return SHC_OK;
+    return 2000.0 + (unixTime - 946684800.0) / 86400.0 / 365.25;
 }

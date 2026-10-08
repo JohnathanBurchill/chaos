@@ -163,27 +163,6 @@ int main (int argc, char **argv)
         goto cleanup;
     }
 
-    // Date from first entry
-    time_t t = (time_t)data[0].unixTime;
-    struct tm *date = gmtime(&t);
-    if (date == NULL)
-    {
-        fprintf(stderr, "Error interpreting first input's time.\n");
-        goto cleanup;
-    }
-    int year = date->tm_year + 1900;
-    int month = date->tm_mon + 1;
-    int day = date->tm_mday;
-
-	// Because MAG inputs are from daily CDF files, we only interpolate once.
-	// This is sufficient accuracy for space physics
-    status = interpolateSHCCoefficients(&coeffs, year, month, day);
-	if (status != SHC_OK)
-	{
-		fprintf(stderr, "Could not interpolate model coefficients: return code = %d.\n", status);
-		goto cleanup;
-	}
-
     // Calculate and print output to file
     Data *p = NULL;
 	double degrees = M_PI / 180.0;
@@ -198,6 +177,12 @@ int main (int argc, char **argv)
         r = p->altitude + EARTH_RADIUS_KM;
         theta = (90.0 - p->latitude) * degrees;
         phi = p->longitude * degrees;
+        status = interpolateSHCCoefficients(&coeffs, decimalYearFromUnixTime(p->unixTime));
+        if (status != SHC_OK)
+        {
+            fprintf(stderr, "Could not interpolate model coefficients: return code = %d.\n", status);
+            goto cleanup;
+        }
         status = calculateField(r, theta, phi, &coeffs.core, &p->bCoreN, &p->bCoreE, &p->bCoreC);
         if (status != CHAOS_MODEL_OK)
         {
